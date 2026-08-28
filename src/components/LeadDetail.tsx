@@ -16,16 +16,18 @@ interface LeadDetailProps {
   googleToken: string | null;
   onClose: () => void;
   onUpdateLead: (updatedLead: Lead) => void;
+  onDeleteLead?: (deletedId: string) => void;
   onTriggerGoogleLogin: () => Promise<string | null>;
 }
 
 export default function LeadDetail({ 
   lead, 
   activeColleague, 
-  colleagues,
+  colleagues, 
   googleToken, 
   onClose, 
   onUpdateLead,
+  onDeleteLead,
   onTriggerGoogleLogin 
 }: LeadDetailProps) {
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -227,6 +229,9 @@ export default function LeadDetail({
   const handleDeleteLead = async () => {
     try {
       await api.deleteLead(lead.id);
+      if (onDeleteLead) {
+        onDeleteLead(lead.id);
+      }
       onClose();
     } catch (e: any) {
       alert('Errore durante l\'eliminazione: ' + e.message);

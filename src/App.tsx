@@ -647,6 +647,11 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
                   setSelectedLead(updated);
                   refreshLeads();
                 }}
+                onDeleteLead={(deletedId) => {
+                  setLeads(prev => prev.filter(l => l.id !== deletedId));
+                  setSelectedLead(null);
+                  refreshLeads();
+                }}
                 onTriggerGoogleLogin={async () => null}
               />
             </div>
