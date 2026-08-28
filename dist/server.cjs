@@ -25159,6 +25159,18 @@ app.delete("/api/leads/:id", async (req, res) => {
   await db.run("DELETE FROM leads WHERE id = ?", [id]);
   res.json({ ok: true });
 });
+app.get("/api/history", async (req, res) => {
+  const rows = await db.all(`
+    SELECT h.*, l.name as leadName, l.company as leadCompany, l.service as leadService, l.services as leadServices
+    FROM history h
+    LEFT JOIN leads l ON l.id = h.leadId
+    ORDER BY h.timestamp DESC
+  `, []);
+  res.json(rows.map((r) => ({
+    ...r,
+    leadServices: parseJsonField(r.leadServices)
+  })));
+});
 app.get("/api/leads/:leadId/history", async (req, res) => {
   const items = await db.all("SELECT * FROM history WHERE leadId = ? ORDER BY timestamp DESC", [req.params.leadId]);
   res.json(items);

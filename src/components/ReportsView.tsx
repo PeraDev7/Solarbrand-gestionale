@@ -38,35 +38,24 @@ export default function ReportsView({ leads, colleagues, services }: ReportsView
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
 
   useEffect(() => {
-    loadData();
+    loadData(historyItems.length === 0);
   }, [leads]);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (isInitial = false) => {
+    if (isInitial) setLoading(true);
     try {
-      let allHistory: EnrichedHistory[] = [];
-      for (const lead of leads) {
-        try {
-          const items = await api.getHistory(lead.id);
-          items.forEach((item: HistoryItem) => {
-            allHistory.push({
-              ...item,
-              leadName: lead.name,
-              leadCompany: lead.company || '',
-              leadService: lead.service || '',
-              leadServices: lead.services || (lead.service ? [lead.service] : [])
-            });
-          });
-        } catch (e) {
-          console.error(`Error loading history for lead ${lead.id}:`, e);
-        }
-      }
-      allHistory.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      setHistoryItems(allHistory);
+      const items = await api.getAllHistory();
+      setHistoryItems(items.map((item: any) => ({
+        ...item,
+        leadName: item.leadName || 'Lead',
+        leadCompany: item.leadCompany || '',
+        leadService: item.leadService || '',
+        leadServices: item.leadServices || (item.leadService ? [item.leadService] : [])
+      })));
     } catch (err) {
       console.error('Error loading report history:', err);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 

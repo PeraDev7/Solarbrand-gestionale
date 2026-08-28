@@ -32,8 +32,8 @@ export default function AppointmentsList({ googleToken, leads, services, colleag
     }
   }, [initialVendorFilter]);
 
-  const fetchAppointments = async () => {
-    setLoading(true);
+  const fetchAppointments = async (isInitial = false) => {
+    if (isInitial) setLoading(true);
     try {
       const [items, cols] = await Promise.all([
         api.getAppointments(),
@@ -47,13 +47,13 @@ export default function AppointmentsList({ googleToken, leads, services, colleag
     } catch (e) {
       console.error('Error loading appointments:', e);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAppointments();
-    const interval = setInterval(fetchAppointments, 30_000);
+    fetchAppointments(true);
+    const interval = setInterval(() => fetchAppointments(false), 30_000);
     return () => clearInterval(interval);
   }, []);
 

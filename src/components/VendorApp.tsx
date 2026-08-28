@@ -25,8 +25,8 @@ export default function VendorApp({ session, onLogout }: Props) {
   const [selectedAppointmentForReport, setSelectedAppointmentForReport] = useState<Appointment | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (isInitial = false) => {
+    if (isInitial) setLoading(true);
     try {
       const [apptsData, leadsData, colsData] = await Promise.all([
         api.getAppointments(session.name),
@@ -40,13 +40,13 @@ export default function VendorApp({ session, onLogout }: Props) {
     } catch (err) {
       console.error('Error loading vendor data:', err);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   }, [session.name, session.id]);
 
   useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 30_000);
+    loadData(true);
+    const interval = setInterval(() => loadData(false), 30_000);
     return () => clearInterval(interval);
   }, [loadData]);
 

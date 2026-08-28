@@ -46,6 +46,7 @@ export const api = {
   deleteLead: (id: string) => request<any>('DELETE', `/api/leads/${id}`),
 
   getHistory: (leadId: string) => request<any[]>('GET', `/api/leads/${leadId}/history`),
+  getAllHistory: () => request<any[]>('GET', '/api/history'),
   addHistory: (leadId: string, data: any) => request<any>('POST', `/api/leads/${leadId}/history`, data),
   deleteHistory: (leadId: string, histId: string) => request<any>('DELETE', `/api/leads/${leadId}/history/${histId}`),
 
