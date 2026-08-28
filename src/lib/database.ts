@@ -7,10 +7,10 @@ import { hashPassword } from './passwords.js';
 
 export const DEMO_DEFAULT_PASSWORD = 'SolarBrand2026!';
 
-// Detect mode: if DB_TYPE='mysql' and DB_HOST is set, try MySQL.
-// Otherwise, or if MySQL fails to connect, fallback smoothly to SQLite so the app
-// works immediately on Windows without needing a local MySQL server installed.
-const preferMySQL = process.env.DB_TYPE === 'mysql' || (process.env.NODE_ENV === 'production' && Boolean(process.env.DB_HOST && process.env.DB_HOST !== 'localhost'));
+// Detect mode: if DB_TYPE='mysql', use MySQL.
+// Otherwise, uses the embedded SQLite database (data/app.db) so the app works
+// immediately out-of-the-box on Hostinger/GitHub with zero configuration.
+const preferMySQL = process.env.DB_TYPE === 'mysql';
 
 let mysqlPool: mysql.Pool | null = null;
 let sqliteDb: any = null;
