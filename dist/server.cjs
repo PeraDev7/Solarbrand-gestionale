@@ -24982,6 +24982,7 @@ async function requireAdmin(req, res) {
   return true;
 }
 (async () => {
+  await initDb();
   await seedDemoDataIfNeeded();
 })();
 function shutdownGracefully() {

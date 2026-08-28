@@ -6,7 +6,7 @@ import { createServer as createViteServer } from 'vite';
 import nodemailer from 'nodemailer';
 import { randomBytes } from 'crypto';
 import { google } from 'googleapis';
-import { db, randomUUID, parseJsonField, seedDemoDataIfNeeded } from './src/lib/database.js';
+import { db, randomUUID, parseJsonField, seedDemoDataIfNeeded, initDb } from './src/lib/database.js';
 import { hashPassword, verifyPassword } from './src/lib/passwords.js';
 import { buildSearchStrings, buildLocationQuery, buildActorInput, startApifyRun, parseGoogleMapsItems } from './src/lib/google-maps-scraper.js';
 import { createJob, getJob, updateJob } from './src/lib/scraper-jobs.js';
@@ -88,8 +88,8 @@ async function requireAdmin(req: express.Request, res: express.Response): Promis
   return true;
 }
 
-// Ensure demo data is populated
-(async () => { await seedDemoDataIfNeeded(); })();
+// Initialize database (MySQL or SQLite) then seed demo data if needed
+(async () => { await initDb(); await seedDemoDataIfNeeded(); })();
 
 // Flush WAL into the main .db file and close cleanly on exit, otherwise
 // recent writes (e.g. saved settings) can sit only in app.db-wal and be
