@@ -11,9 +11,11 @@ interface Props {
   onClose: () => void;
   services: string[];
   leads: Lead[];
+  colleagues?: string[];
+  activeColleague?: string;
 }
 
-export default function ImportLeadsModal({ onClose, services, leads }: Props) {
+export default function ImportLeadsModal({ onClose, services, leads, colleagues = [], activeColleague = '' }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('file');
 
   return (
@@ -61,7 +63,7 @@ export default function ImportLeadsModal({ onClose, services, leads }: Props) {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          {activeTab === 'file' && <FileImportTab leads={leads} services={services} onClose={onClose} />}
+          {activeTab === 'file' && <FileImportTab leads={leads} services={services} colleagues={colleagues} activeColleague={activeColleague} onClose={onClose} />}
           {activeTab === 'apify' && <ApifyGoogleMapsTab onClose={onClose} />}
         </div>
       </div>
@@ -69,11 +71,12 @@ export default function ImportLeadsModal({ onClose, services, leads }: Props) {
   );
 }
 
-function FileImportTab({ leads, services, onClose }: { leads: Lead[], services: string[], onClose: () => void }) {
+function FileImportTab({ leads, services, colleagues = [], activeColleague = '', onClose }: { leads: Lead[], services: string[], colleagues?: string[], activeColleague?: string, onClose: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [columns, setColumns] = useState<string[]>([]);
-  const [mapping, setMapping] = useState<Record<string, string>>({ name: '', phone: '', email: '', company: '', service: '', notes: '' });
+  const [mapping, setMapping] = useState<Record<string, string>>({ name: '', phone: '', email: '', company: '', service: '', assignedColleague: '', notes: '' });
   const [defaultServices, setDefaultServices] = useState<string[]>([]);
+  const [defaultColleague, setDefaultColleague] = useState<string>(activeColleague || '');
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
@@ -92,6 +95,7 @@ function FileImportTab({ leads, services, onClose }: { leads: Lead[], services: 
     { key: 'email', label: 'Email', required: false },
     { key: 'company', label: 'Azienda', required: false },
     { key: 'address', label: 'Indirizzo (Via, Città)', required: false },
+    { key: 'assignedColleague', label: 'Assegna ad Agente / Operatore', required: false },
     { key: 'service', label: 'Servizio di interesse', required: false },
     { key: 'notes', label: 'Note', required: false },
   ];
@@ -122,6 +126,7 @@ function FileImportTab({ leads, services, onClose }: { leads: Lead[], services: 
             else if (lowerH.includes('mail') || lowerH.includes('email')) initialMapping.email = h;
             else if (lowerH.includes('azienda') || lowerH.includes('company') || lowerH.includes('ragione')) initialMapping.company = h;
             else if (lowerH.includes('indirizzo') || lowerH.includes('via') || lowerH.includes('address') || lowerH.includes('città')) initialMapping.address = h;
+            else if (lowerH.includes('operatore') || lowerH.includes('venditore') || lowerH.includes('agente') || lowerH.includes('collega') || lowerH.includes('assegnato')) initialMapping.assignedColleague = h;
             else if (lowerH.includes('servizi') || lowerH.includes('service')) initialMapping.service = h;
             else if (lowerH.includes('note') || lowerH.includes('messaggio')) initialMapping.notes = h;
           });
@@ -169,6 +174,7 @@ function FileImportTab({ leads, services, onClose }: { leads: Lead[], services: 
       email: row[currentMapping.email] ? String(row[currentMapping.email]) : '',
       company: row[currentMapping.company] ? String(row[currentMapping.company]) : '',
       address: row[currentMapping.address] ? String(row[currentMapping.address]) : '',
+      assignedColleague: (row[currentMapping.assignedColleague] ? String(row[currentMapping.assignedColleague]) : '') || defaultColleague,
       service: (row[currentMapping.service] ? String(row[currentMapping.service]) : '') || (currentDefaultServices.length > 0 ? currentDefaultServices[0] : ''),
       notes: row[currentMapping.notes] ? String(row[currentMapping.notes]) : '',
     }));
@@ -222,6 +228,7 @@ function FileImportTab({ leads, services, onClose }: { leads: Lead[], services: 
         email: row[mapping.email] ? String(row[mapping.email]).trim() : '',
         company: row[mapping.company] ? String(row[mapping.company]).trim() : '',
         address: row[mapping.address] ? String(row[mapping.address]).trim() : '',
+        assignedColleague: (row[mapping.assignedColleague] ? String(row[mapping.assignedColleague]).trim() : '') || defaultColleague,
         service: row[mapping.service] ? String(row[mapping.service]).trim() : (defaultServices[0] || ''),
         notes: row[mapping.notes] ? String(row[mapping.notes]).trim() : '',
       })).filter(r => r.name);
@@ -347,20 +354,39 @@ function FileImportTab({ leads, services, onClose }: { leads: Lead[], services: 
             </div>
           )}
 
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50 border border-slate-200 p-4 rounded-xl">
-            <div>
-              <h4 className="text-xs font-bold text-slate-700">Gestione Duplicati</h4>
-              <p className="text-[11px] text-slate-500">Cosa fare se un contatto ha lo stesso telefono/email di uno già in archivio?</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-col justify-between gap-2 bg-slate-50 border border-slate-200 p-4 rounded-xl">
+              <div>
+                <h4 className="text-xs font-bold text-slate-700">Assegna Lead a (Predefinito)</h4>
+                <p className="text-[11px] text-slate-500">A quale venditore o telefonista assegnare i contatti senza colonna specifica?</p>
+              </div>
+              <select
+                value={defaultColleague}
+                onChange={e => setDefaultColleague(e.target.value)}
+                className="bg-white border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-800 cursor-pointer"
+              >
+                <option value="">-- Nessuno (Non assegnato) --</option>
+                {colleagues.map(c => (
+                  <option key={c} value={c}>👤 {c}</option>
+                ))}
+              </select>
             </div>
-            <select
-              value={duplicateMode}
-              onChange={e => setDuplicateMode(e.target.value as DuplicateMode)}
-              className="bg-white border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-800"
-            >
-              <option value="skip">Salta Duplicati (Consigliato)</option>
-              <option value="use_existing">Aggiorna Scheda Esistente</option>
-              <option value="create_new">Crea Comunque Nuovo Lead</option>
-            </select>
+
+            <div className="flex flex-col justify-between gap-2 bg-slate-50 border border-slate-200 p-4 rounded-xl">
+              <div>
+                <h4 className="text-xs font-bold text-slate-700">Gestione Duplicati</h4>
+                <p className="text-[11px] text-slate-500">Cosa fare se un contatto ha lo stesso telefono/email di uno già in archivio?</p>
+              </div>
+              <select
+                value={duplicateMode}
+                onChange={e => setDuplicateMode(e.target.value as DuplicateMode)}
+                className="bg-white border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-800 cursor-pointer"
+              >
+                <option value="skip">Salta Duplicati (Consigliato)</option>
+                <option value="use_existing">Aggiorna Scheda Esistente</option>
+                <option value="create_new">Crea Comunque Nuovo Lead</option>
+              </select>
+            </div>
           </div>
 
           <button

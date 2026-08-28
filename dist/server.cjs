@@ -25020,10 +25020,10 @@ app.get("/api/leads", async (req, res) => {
   if (vendorName) {
     query = `
       SELECT DISTINCT l.* FROM leads l
-      INNER JOIN appointments a ON a.leadId = l.id
-      WHERE a.assignedVendor = ?
+      LEFT JOIN appointments a ON a.leadId = l.id
+      WHERE a.assignedVendor = ? OR l.assignedColleague = ?
     `;
-    params = [vendorName];
+    params = [vendorName, vendorName];
   }
   query += " ORDER BY updatedAt DESC";
   const rows = await db.all(query, params);
@@ -25802,6 +25802,7 @@ app.post("/api/leads/import", async (req, res) => {
         const service = String(raw.service ?? raw.servizio ?? "").trim();
         const notes = String(raw.notes ?? raw.note ?? "").trim();
         const address = String(raw.address ?? raw.indirizzo ?? raw.via ?? "").trim();
+        const assignedColleague = String(raw.assignedColleague ?? raw.operatore ?? raw.venditore ?? raw.assegnato ?? "").trim();
         if (!name) {
           failed++;
           results.push({ ok: false, row: i + 1, error: "name mancante" });
@@ -25830,7 +25831,8 @@ app.post("/api/leads/import", async (req, res) => {
           }
           if (duplicate_mode === "use_existing") {
             const now2 = (/* @__PURE__ */ new Date()).toISOString();
-            await db.run("UPDATE leads SET name=?, company=?, phone=?, email=?, service=?, status=?, address=?, updatedAt=? WHERE id=?", [name, company || duplicate.company, phone || duplicate.phone, email || duplicate.email, service || duplicate.service, "Nuovo", address || duplicate.address, now2, duplicate.id]);
+            const newAssigned = assignedColleague || duplicate.assignedColleague || "";
+            await db.run("UPDATE leads SET name=?, company=?, phone=?, email=?, service=?, assignedColleague=?, status=?, address=?, updatedAt=? WHERE id=?", [name, company || duplicate.company, phone || duplicate.phone, email || duplicate.email, service || duplicate.service, newAssigned, "Nuovo", address || duplicate.address, now2, duplicate.id]);
             updated++;
             if (email) updatedIds.push(duplicate.id);
             results.push({ ok: true, row: i + 1, updated: true });
@@ -25841,9 +25843,9 @@ app.post("/api/leads/import", async (req, res) => {
         const now = (/* @__PURE__ */ new Date()).toISOString();
         const services = service ? [service] : [];
         await db.run(`
-          INSERT INTO leads (id, name, company, phone, email, status, type, service, services, source, notes, address, createdAt, updatedAt)
-          VALUES (?, ?, ?, ?, ?, 'Nuovo', 'Lead', ?, ?, 'csv', ?, ?, ?, ?)
-        `, [id, name, company, phone, email, service, JSON.stringify(services), notes, address, now, now]);
+          INSERT INTO leads (id, name, company, phone, email, status, type, service, services, assignedColleague, source, notes, address, createdAt, updatedAt)
+          VALUES (?, ?, ?, ?, ?, 'Nuovo', 'Lead', ?, ?, ?, 'csv', ?, ?, ?, ?)
+        `, [id, name, company, phone, email, service, JSON.stringify(services), assignedColleague, notes, address, now, now]);
         if (notes) {
           await db.run("INSERT INTO history (id, leadId, timestamp, colleague, note, statusAfterCall, type) VALUES (?, ?, ?, ?, ?, ?, ?)", [randomUUID(), id, now, "Importazione", notes, "Nuovo", "note"]);
         }

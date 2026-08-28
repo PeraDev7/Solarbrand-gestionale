@@ -238,17 +238,36 @@ export default function LeadDetail({
     }
   };
 
+  const handleQuickReassign = async (newColleague: string) => {
+    try {
+      const updated = await api.updateLead(lead.id, { assignedColleague: newColleague });
+      onUpdateLead(updated);
+    } catch (e: any) {
+      alert('Errore riassegnazione: ' + e.message);
+    }
+  };
+
   return (
     <div className="w-full lg:w-96 bg-white border border-slate-200 rounded-3xl shadow-sm flex flex-col h-full overflow-hidden">
       
       {/* Header Drawer */}
       <div className="p-5 border-b border-slate-100 flex justify-between items-start bg-slate-50/50">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${lead.type === 'Cliente' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
               {lead.type || 'Lead'}
             </span>
-            <span className="text-xs text-slate-400 font-medium">• {lead.assignedColleague || 'Non assegnato'}</span>
+            <select
+              value={lead.assignedColleague || ''}
+              onChange={(e) => handleQuickReassign(e.target.value)}
+              className="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg px-2 py-0.5 border border-slate-200/80 focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-colors"
+              title="Cambia operatore o agente commerciale assegnato a questo lead"
+            >
+              <option value="">-- Non assegnato --</option>
+              {colleagues.map(c => (
+                <option key={c} value={c}>👤 {c}</option>
+              ))}
+            </select>
           </div>
           <h2 className="text-xl font-black text-slate-900 mt-1">{lead.name}</h2>
           {lead.company && (

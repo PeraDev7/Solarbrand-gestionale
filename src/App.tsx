@@ -701,12 +701,15 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
 
       {/* Import Leads Modal */}
       {showImportModal && (
-        <ImportLeadsModal leads={leads}
+        <ImportLeadsModal 
+          leads={leads}
+          services={availableServices}
+          colleagues={colleagues}
+          activeColleague={activeColleague}
           onClose={() => {
             setShowImportModal(false);
             refreshLeads();
           }}
-          services={availableServices}
         />
       )}
 
