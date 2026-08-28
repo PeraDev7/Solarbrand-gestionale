@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "start-app.bat",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --outfile=dist/server.cjs --external:mysql2 --external:nodemailer --external:imapflow --external:googleapis --external:vite",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --outfile=dist/server.cjs --external:mysql2 --external:better-sqlite3 --external:nodemailer --external:imapflow --external:googleapis --external:vite",
     "build:local": "cmd /c \"xcopy /s /y /q src C:\\npm_tmp2\\src\\ && copy /y server.ts C:\\npm_tmp2\\server.ts && copy /y vite.config.ts C:\\npm_tmp2\\vite.config.ts && cd /d C:\\npm_tmp2 && npm run build\"",
     "start": "node dist/server.cjs",
     "preview": "vite preview",

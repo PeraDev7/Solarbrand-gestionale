@@ -1,5 +1,4 @@
 import mysql from 'mysql2/promise';
-import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import { randomUUID as cryptoRandomUUID } from 'crypto';
@@ -7,10 +6,8 @@ import { hashPassword } from './passwords.js';
 
 export const DEMO_DEFAULT_PASSWORD = 'SolarBrand2026!';
 
-// Detect mode: if DB_TYPE='mysql', use MySQL.
-// Otherwise, uses the embedded SQLite database (data/app.db) so the app works
-// immediately out-of-the-box on Hostinger/GitHub with zero configuration.
-const preferMySQL = process.env.DB_TYPE === 'mysql';
+// Detect mode: if DB_HOST, DB_USER, DB_NAME or DB_TYPE='mysql' is set, use MySQL.
+const preferMySQL = process.env.DB_TYPE === 'mysql' || Boolean(process.env.DB_HOST || process.env.DB_USER || process.env.DB_NAME);
 
 let mysqlPool: mysql.Pool | null = null;
 let sqliteDb: any = null;
@@ -36,9 +33,14 @@ function initSqlite(): any {
   const dbPath = getSqlitePath();
   const dir = path.dirname(dbPath);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  const db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
-  return db;
+  try {
+    const Database = require('better-sqlite3');
+    const db = new Database(dbPath);
+    db.pragma('journal_mode = WAL');
+    return db;
+  } catch (err: any) {
+    throw new Error(`Modulo better-sqlite3 non disponibile: ${err?.message || ''}. Configura le credenziali MySQL (DB_HOST, DB_USER, DB_PASS, DB_NAME).`);
+  }
 }
 
 // Convert MySQL syntax to SQLite if running in SQLite fallback mode
