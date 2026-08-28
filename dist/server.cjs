@@ -24762,6 +24762,25 @@ async function initDb() {
       ]
     );
   }
+  const allCols = await db.all("SELECT * FROM colleagues", []);
+  const defaultHash = hashPassword(DEMO_DEFAULT_PASSWORD);
+  for (const c of allCols) {
+    let email = c.email || "";
+    if (!email.trim()) {
+      email = `${c.id}@solarbrand.it`;
+    }
+    let pwdHash = c.passwordHash || "";
+    if (!pwdHash.trim()) {
+      pwdHash = defaultHash;
+    }
+    let role = c.role || "telefonista";
+    if (c.id === "erika") {
+      role = "admin";
+    }
+    if (email !== c.email || pwdHash !== c.passwordHash || role !== c.role) {
+      await db.run("UPDATE colleagues SET email = ?, passwordHash = ?, role = ? WHERE id = ?", [email, pwdHash, role, c.id]);
+    }
+  }
 }
 function parseJsonField(val) {
   if (!val) return [];
