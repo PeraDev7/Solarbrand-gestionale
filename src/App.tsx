@@ -74,6 +74,7 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
   const [statusFilter, setStatusFilter] = useState<string>('Tutti');
   const [typeFilter, setTypeFilter] = useState<'Tutti' | 'Lead' | 'Cliente'>('Tutti');
   const [serviceFilter, setServiceFilter] = useState<string>('Tutti');
+  const [colleagueFilter, setColleagueFilter] = useState<string>('Tutti');
 
   const [currentTab, setCurrentTab] = useState<'leads' | 'calendar' | 'reports'>('leads');
   const [selectedVendorForCalendar, setSelectedVendorForCalendar] = useState<string>('Tutti');
@@ -122,18 +123,6 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
   }, [loadColleagues, loadServices]);
 
   const filteredLeads = leads.filter(lead => {
-    const assigned = lead.assignedColleague;
-    const isMine = assigned === activeColleague;
-    const visibleCols = activeColleagueObj?.visibleColleagues || [];
-    let canSee = false;
-    if (activeColleagueObj?.visibleColleagues === undefined) {
-      canSee = true;
-    } else {
-      canSee = isMine || visibleCols.includes(assigned || 'Nessuno (Libero)');
-    }
-
-    if (!canSee) return false;
-
     const matchesSearch = 
       lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (lead.company && lead.company.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -144,10 +133,16 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
     const matchesType = typeFilter === 'Tutti' || lead.type === typeFilter;
     const leadHasServices = lead.services && lead.services.length > 0;
     const matchesService = serviceFilter === 'Tutti' 
-      ? (leadHasServices ? lead.services.some(s => availableServices.includes(s)) : (availableServices.includes(lead.service || '') || !lead.service))
+      ? true 
       : (leadHasServices ? lead.services.includes(serviceFilter) : lead.service === serviceFilter);
 
-    return matchesSearch && matchesStatus && matchesType && matchesService;
+    const matchesColleague = colleagueFilter === 'Tutti'
+      ? true
+      : colleagueFilter === '__unassigned__'
+        ? (!lead.assignedColleague || lead.assignedColleague.trim() === '' || lead.assignedColleague === 'Nessuno' || lead.assignedColleague === 'Non assegnato')
+        : lead.assignedColleague === colleagueFilter;
+
+    return matchesSearch && matchesStatus && matchesType && matchesService && matchesColleague;
   });
 
   const handleSelectLeadById = (id: string) => {
@@ -396,8 +391,31 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
                     </select>
                   </div>
 
+                  {/* Assigned Colleague / Vendor Filter */}
+                  <div className="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-1 bg-slate-50 md:max-w-[210px] w-full">
+                    <User className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    <select
+                      value={colleagueFilter}
+                      onChange={(e) => setColleagueFilter(e.target.value)}
+                      className="bg-transparent border-none text-xs font-bold text-slate-700 focus:outline-none w-full py-1.5 cursor-pointer"
+                    >
+                      <option value="Tutti">Assegnato (Tutti)</option>
+                      <option value="__unassigned__">⚠️ Non Assegnati</option>
+                      <optgroup label="Telefonisti / Ufficio">
+                        {colleagueObjects.filter(c => c.role !== 'venditore').map(c => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Agenti Commerciali">
+                        {colleagueObjects.filter(c => c.role === 'venditore').map(c => (
+                          <option key={c.id} value={c.name}>💼 {c.name}</option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </div>
+
                   {/* Status Filter */}
-                  <div className="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-1 bg-slate-50 md:max-w-[200px] w-full">
+                  <div className="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-1 bg-slate-50 md:max-w-[190px] w-full">
                     <Filter className="w-4 h-4 text-slate-400 flex-shrink-0" />
                     <select
                       value={statusFilter}
