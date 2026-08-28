@@ -481,24 +481,39 @@ export async function initDb() {
   }
 
   // ── Backfill default emails and passwords for colleagues if empty ───────────
-  const allCols = await db.all('SELECT * FROM colleagues', []) as any[];
   const defaultHash = hashPassword(DEMO_DEFAULT_PASSWORD);
+
+  // Ensure default admin (Erika) exists and has password
+  const erika = await db.get("SELECT * FROM colleagues WHERE id = 'erika' OR LOWER(email) = 'erika@solarbrand.it'") as any;
+  if (!erika) {
+    const services = ['Fotovoltaico 6kW','Fotovoltaico 10kW','Fotovoltaico 20kW','Fotovoltaico Industriale 100kW','Pompa di Calore','Comunità Energetica (CER)'];
+    await db.run(
+      `INSERT INTO colleagues (id, name, role, phone, email, services, visibleColleagues, username, passwordHash, createdAt) VALUES ('erika', 'Erika', 'admin', '', 'erika@solarbrand.it', ?, '[]', 'erika', ?, ?)`,
+      [JSON.stringify(services), defaultHash, now]
+    );
+  } else {
+    const pwdHash = (erika.passwordHash && erika.passwordHash.startsWith('scrypt$')) ? erika.passwordHash : defaultHash;
+    await db.run(
+      `UPDATE colleagues SET email = 'erika@solarbrand.it', role = 'admin', username = 'erika', passwordHash = ? WHERE id = ?`,
+      [pwdHash, erika.id]
+    );
+  }
+
+  const allCols = await db.all('SELECT * FROM colleagues', []) as any[];
   for (const c of allCols) {
     let email = c.email || '';
     if (!email.trim()) {
       email = `${c.id}@solarbrand.it`;
     }
     let pwdHash = c.passwordHash || '';
-    if (!pwdHash.trim()) {
+    if (!pwdHash.trim() || !pwdHash.startsWith('scrypt$')) {
       pwdHash = defaultHash;
     }
     let role = c.role || 'telefonista';
     if (c.id === 'erika') {
       role = 'admin';
     }
-    if (email !== c.email || pwdHash !== c.passwordHash || role !== c.role) {
-      await db.run('UPDATE colleagues SET email = ?, passwordHash = ?, role = ? WHERE id = ?', [email, pwdHash, role, c.id]);
-    }
+    await db.run('UPDATE colleagues SET email = ?, passwordHash = ?, role = ? WHERE id = ?', [email, pwdHash, role, c.id]);
   }
 }
 

