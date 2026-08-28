@@ -24457,7 +24457,8 @@ async function initDb() {
   const mysqlPass = process.env.DB_PASS || "";
   const mysqlDb = process.env.DB_NAME || "solarbrand";
   const mysqlPort = Number(process.env.DB_PORT) || 3306;
-  if (preferMySQL || mysqlHost && mysqlHost !== "localhost") {
+  const useMySQL = process.env.DB_TYPE === "mysql" || Boolean(mysqlHost || mysqlUser || mysqlDb !== "solarbrand");
+  if (useMySQL && mysqlHost) {
     try {
       const testPool = import_promise.default.createPool({
         host: mysqlHost,

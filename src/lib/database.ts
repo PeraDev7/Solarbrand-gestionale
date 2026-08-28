@@ -141,7 +141,9 @@ export async function initDb() {
   const mysqlDb   = process.env.DB_NAME || 'solarbrand';
   const mysqlPort = Number(process.env.DB_PORT) || 3306;
 
-  if (preferMySQL || (mysqlHost && mysqlHost !== 'localhost')) {
+  const useMySQL = process.env.DB_TYPE === 'mysql' || Boolean(mysqlHost || mysqlUser || mysqlDb !== 'solarbrand');
+
+  if (useMySQL && mysqlHost) {
     try {
       const testPool = mysql.createPool({
         host: mysqlHost,
