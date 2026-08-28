@@ -125,6 +125,17 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
     }
   };
 
+  const deleteService = async (srv: Service) => {
+    if (!confirm(`Eliminare definitivamente il servizio "${srv.name}"?`)) return;
+    try {
+      await api.deleteService(srv.id);
+      await fetchData();
+      onUpdate();
+    } catch (err: any) {
+      alert(err.message || 'Errore eliminazione servizio');
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 font-sans">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -225,8 +236,15 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
 
               <div className="flex flex-wrap gap-1.5 pt-2">
                 {services.map(srv => (
-                  <span key={srv.id} className="bg-white border border-slate-200 text-slate-700 px-3 py-1 rounded-xl text-xs font-bold shadow-xs">
-                    {srv.name}
+                  <span key={srv.id} className="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-700 pl-3 pr-1.5 py-1 rounded-xl text-xs font-bold shadow-xs group">
+                    <span>{srv.name}</span>
+                    <button 
+                      onClick={() => deleteService(srv)}
+                      className="text-slate-300 hover:text-rose-500 hover:bg-rose-50 p-0.5 rounded-md transition-colors cursor-pointer"
+                      title="Elimina servizio"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   </span>
                 ))}
               </div>
