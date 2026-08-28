@@ -1,1 +1,1 @@
-require('./dist/server.cjs'); 
+import("./dist/server.cjs").catch(function(e){console.error(e);process.exit(1);});
