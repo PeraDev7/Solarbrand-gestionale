@@ -647,8 +647,8 @@ function ApifyGoogleMapsTab({ onClose }: { onClose: () => void }) {
         </div>
 
         <ol className="list-decimal list-inside space-y-1 text-emerald-900 font-medium leading-relaxed pl-1">
-          <li>Accedi o crea un account su <strong>Apify.com</strong> (include crediti gratuiti ogni mese).</li>
-          <li>Vai su <strong>Settings ➔ Integrations ➔ API Tokens</strong> e copia il tuo <strong>Personal API Token</strong>.</li>
+          <li>Accedi al tuo account su <strong>Apify.com</strong>.</li>
+          <li>Vai su <strong>Settings ➔ API & Integrations ➔ API Tokens</strong> e copia il tuo <strong>Organization API Token</strong> (oppure il <strong>Personal API Token</strong>).</li>
           <li>Incolla il token nel riquadro sottostante e clicca su <strong>Salva Token</strong>. Verrà memorizzato in modo sicuro per tutti i futuri utilizzi!</li>
         </ol>
       </div>
