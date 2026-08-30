@@ -62,6 +62,12 @@ L'applicazione supporta il flusso operativo aziendale completo con due portali d
 - **Feedback Immediato Modifica Email e Ruolo**: Banner e badge animati per confermare istantaneamente l'avvenuto aggiornamento di email e ruolo senza ricaricare la pagina o mostrare alert invasivi.
 - **Password Iniziale in Creazione Profilo**: Possibilità di impostare direttamente la password iniziale durante la creazione di un nuovo operatore.
 
+### 2.5 Lead Generation B2B con Google Maps (Apify Scraper) & Target Count Garantito
+- **Sostituzione Completa Apollo con Apify**: Rimossi tutti i vecchi riferimenti ad Apollo dalle impostazioni server/SMTP. Il token API è ora salvato come `apify_token`.
+- **Target Count Qualificato Garantito**: Se l'utente richiede ad esempio *25 Lead Verificati*, il sistema garantisce l'importazione di esattamente 25 contatti con **SIA Email SIA Telefono validi**.
+- **Buffer di Scansione Intelligente (3.5x - 4x) & Multi-Round Automatico**: Poiché mediamente solo il 25-35% delle schede Maps possiede contatti completi estratti dal sito web, lo scraper parte con un campionamento maggiorato e avvia round di recupero automatici fino a raggiungere l'esatta quota di lead richiesti.
+- **Trasparenza Dati Estratti**: Estrazione reale dei dati aziendali (Ragione Sociale, Telefono, Indirizzo e Sito Web) con arricchimento referenti (Titolari, CEO, Amministratori) ove presenti pubblicamente, evitando contatti incompleti.
+
 ---
 
 ## 3. Guida alla Configurazione di Google Calendar OAuth

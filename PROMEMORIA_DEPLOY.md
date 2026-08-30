@@ -93,4 +93,7 @@ DB_PASS=123Noscusa!1234
 GOOGLE_CLIENT_ID=549446315818-cuk21asmn7oii38n16dhlib94961q8hl.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-PJf...[Configurato in Hostinger]
 GOOGLE_REDIRECT_URI=https://crm.solarbrandkg.it/api/auth/google/callback
+
+# Token Apify (opzionale se inserito da interfaccia gestionale)
+APIFY_TOKEN=
 ```
