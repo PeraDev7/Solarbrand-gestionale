@@ -108,13 +108,21 @@ export default function EmailCampaignManager({ onClose, currentUser, onOpenLead 
       if (accounts.length === 0) {
         return alert('⚠️ Nessun account IMAP configurato!\n\nVai nel pannello IMAP (pulsante "IMAP" nella toolbar principale) e aggiungi un account con le tue credenziali IMAP per leggere le risposte dei lead.');
       }
-      let totalFound = 0;
+      let totalReplies = 0;
+      let totalInbox = 0;
       for (const acc of accounts) {
         const res = await fetch(`/api/imap-accounts/${acc.id}/check`, { method: 'POST' });
         const data = await res.json();
-        if (res.ok) totalFound += (data.foundReplies || 0);
+        if (res.ok) {
+          totalReplies += (data.repliesFound || 0);
+          totalInbox += (data.inboxMatches || 0);
+        }
       }
-      alert(`✅ Controllo IMAP completato!\nTrovate ${totalFound} nuove risposte.`);
+      const parts = [];
+      if (totalReplies > 0) parts.push(`${totalReplies} risposte a campagne`);
+      if (totalInbox > 0) parts.push(`${totalInbox} email in arrivo abbinate a lead`);
+      const summary = parts.length > 0 ? parts.join('\n') : 'Nessuna novità.';
+      alert(`✅ Controllo IMAP completato!\n${summary}`);
       if (selectedCampaign) {
         await refreshDetail(selectedCampaign.id);
       }

@@ -493,7 +493,7 @@ export default function LeadDetail({
                       </div>
                       {item.note && (
                         <p className="text-xs text-slate-800 font-medium whitespace-pre-wrap leading-relaxed">
-                          {item.note}
+                          {item.note.replace(/\s*\[MSGID:[^\]]+\]/g, '')}
                         </p>
                       )}
                       {item.statusAfterCall && item.statusAfterCall !== lead.status && (

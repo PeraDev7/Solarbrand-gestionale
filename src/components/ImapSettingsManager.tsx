@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Save, Mail, Plus, Trash2, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { ImapAccount } from '../types';
 import { authFetch as fetch } from '../lib/api';
@@ -80,7 +80,11 @@ export default function ImapSettingsManager({ onClose }: ImapSettingsManagerProp
       const res = await fetch(`/api/imap-accounts/${id}/check`, { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
-        setCheckResult({ id, msg: `Controllo completato: ${data.repliesFound} nuove risposte trovate.` });
+        const parts = [];
+        if (data.repliesFound > 0) parts.push(`${data.repliesFound} risposte a campagne`);
+        if (data.inboxMatches > 0) parts.push(`${data.inboxMatches} email in arrivo abbinate a lead`);
+        const summary = parts.length > 0 ? parts.join(', ') : 'nessuna novità';
+        setCheckResult({ id, msg: `✅ Controllo completato: ${summary}.` });
         fetchAccounts();
       } else {
         setCheckResult({ id, msg: `Errore: ${data.error}` });
