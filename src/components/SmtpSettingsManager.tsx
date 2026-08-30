@@ -12,7 +12,8 @@ export default function SmtpSettingsManager({ onClose }: SmtpSettingsManagerProp
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [apolloKey, setApolloKey] = useState('');
+  const [apifyToken, setApifyToken] = useState('');
+  const [apifyTokenSaved, setApifyTokenSaved] = useState(false);
   const [publicUrl, setPublicUrl] = useState('');
   const [publicUrlSaved, setPublicUrlSaved] = useState(false);
   const [companySmtpId, setCompanySmtpId] = useState('');
@@ -29,9 +30,10 @@ export default function SmtpSettingsManager({ onClose }: SmtpSettingsManagerProp
   useEffect(() => {
     fetchAccounts();
     api.getSettings().then(s => {
-      setApolloKey(s['apollo_api_key'] || '');
-      setPublicUrl(s['public_url'] || '');
-      setPublicUrlSaved(!!s['public_url']);
+      setApifyToken(s['apify_token'] || s['apify_api_key'] || '');
+      setApifyTokenSaved(Boolean(s['apify_token'] || s['apify_api_key']));
+      setPublicUrl(s['public_url'] || 'https://crm.solarbrandkg.it');
+      setPublicUrlSaved(Boolean(s['public_url']));
       setCompanySmtpId(s['company_smtp_id'] || '');
     }).catch(console.error);
   }, []);
@@ -67,12 +69,15 @@ export default function SmtpSettingsManager({ onClose }: SmtpSettingsManagerProp
     }
   };
 
-  const handleSaveApolloKey = async () => {
+  const handleSaveApifyToken = async () => {
     try {
-      await api.setSetting('apollo_api_key', apolloKey.trim());
-      alert('Chiave API Apollo salvata con successo!');
+      const token = apifyToken.trim();
+      await api.setSetting('apify_token', token);
+      await api.setSetting('apify_api_key', token);
+      setApifyTokenSaved(Boolean(token));
+      alert('✅ Token API Apify salvato con successo!');
     } catch (e: any) {
-      alert('Errore salvataggio chiave Apollo: ' + e.message);
+      alert('Errore salvataggio token Apify: ' + e.message);
     }
   };
 
@@ -178,26 +183,35 @@ export default function SmtpSettingsManager({ onClose }: SmtpSettingsManagerProp
         {/* Content */}
         <div className="p-6 overflow-y-auto flex-1 space-y-8">
           
-          {/* Apollo Key Section */}
+          {/* Apify API Token Section */}
           <div className="bg-blue-50/60 border border-blue-200/80 rounded-2xl p-5 space-y-3">
-            <div className="flex items-center gap-2">
-              <Key className="w-5 h-5 text-blue-600" />
-              <h3 className="font-bold text-slate-800 text-base">Chiave API Apollo.io</h3>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Key className="w-5 h-5 text-blue-600" />
+                <h3 className="font-bold text-slate-800 text-base">Token API Apify (Google Maps Lead Generator)</h3>
+              </div>
+              {apifyTokenSaved && (
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                  ✅ Configurato
+                </span>
+              )}
             </div>
-            <p className="text-xs text-slate-600">Inserisci la tua chiave API Apollo per abilitare l'importazione automatica dei lead.</p>
+            <p className="text-xs text-slate-600">
+              Inserisci il tuo Token API personale di Apify per estrarre lead territoriali con Google Maps Scraper (con email e telefono).
+            </p>
             <div className="flex gap-2">
               <input
                 type="password"
-                value={apolloKey}
-                onChange={e => setApolloKey(e.target.value)}
-                placeholder="api_key_..."
+                value={apifyToken}
+                onChange={e => setApifyToken(e.target.value)}
+                placeholder="apify_api_..."
                 className="flex-1 bg-white border border-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
               <button
-                onClick={handleSaveApolloKey}
+                onClick={handleSaveApifyToken}
                 className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all cursor-pointer"
               >
-                Salva Chiave
+                Salva Token
               </button>
             </div>
           </div>

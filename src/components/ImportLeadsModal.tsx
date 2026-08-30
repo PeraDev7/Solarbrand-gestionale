@@ -687,7 +687,7 @@ function ApifyGoogleMapsTab({ onClose }: { onClose: () => void }) {
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 flex items-start gap-2.5">
         <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
         <div className="text-[11px] text-blue-900 leading-relaxed">
-          <strong>Filtro Qualità Rigoroso 100%:</strong> Google Maps contiene tutte le attività territoriali reali. Lo scraper arricchisce ciascuna azienda scansionando il sito web e i referenti chiave (CEO, Direttori, Titolari). Vengono ammessi nel CRM <strong>SOLO contatti con sia Email che Telefono validi</strong>.
+          <strong>Filtro Qualità Rigoroso 100%:</strong> Google Maps contiene tutte le attività territoriali reali. Lo scraper arricchisce ciascuna azienda estraendo i dati dal sito web e i referenti aziendali disponibili. Vengono ammessi nel CRM <strong>SOLO contatti con sia Email che Telefono validi</strong>.
         </div>
       </div>
 
