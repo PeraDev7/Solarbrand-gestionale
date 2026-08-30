@@ -1949,21 +1949,22 @@ app.post('/api/imap-accounts/:id/check', async (req, res) => {
   try {
     const account = await db.get('SELECT * FROM imap_accounts WHERE id = ?', [req.params.id]) as any;
     if (!account) return res.status(404).json({ error: 'Account IMAP non trovato' });
-    const result = await runImapCheck(account);
-    res.json({ ok: true, repliesFound: result });
+    const { repliesFound, inboxMatches } = await runImapCheck(account);
+    res.json({ ok: true, repliesFound, inboxMatches });
   } catch (err: any) {
     res.status(500).json({ error: err?.message || 'Errore IMAP' });
   }
 });
 
 // ── IMAP CHECK FUNCTION ──
-async function runImapCheck(account: any): Promise<number> {
+// Returns { repliesFound, inboxMatches }
+async function runImapCheck(account: any): Promise<{ repliesFound: number; inboxMatches: number }> {
   let imapflow: any;
   try {
     imapflow = await import('imapflow');
   } catch (e) {
     console.warn('[IMAP] imapflow non disponibile:', e);
-    return 0;
+    return { repliesFound: 0, inboxMatches: 0 };
   }
   const { ImapFlow } = imapflow;
 
@@ -1971,107 +1972,161 @@ async function runImapCheck(account: any): Promise<number> {
     host: account.host,
     port: Number(account.port),
     secure: Boolean(account.useSSL),
-    auth: {
-      user: account.user_email,
-      pass: account.pass,
-    },
+    auth: { user: account.user_email, pass: account.pass },
     logger: false,
   });
 
+  // Helper: extract plain text from raw email source
+  function extractBodyText(rawSource: Buffer): string {
+    const raw = rawSource.toString('utf8');
+    const sepIdx = raw.indexOf('\r\n\r\n') !== -1 ? raw.indexOf('\r\n\r\n') + 4 : raw.indexOf('\n\n') + 2;
+    let body = sepIdx > 2 ? raw.slice(sepIdx) : '';
+    const boundaryMatch = raw.match(/boundary="?([^"\r\n;]+)"?/i);
+    if (boundaryMatch) {
+      const boundary = boundaryMatch[1].trim();
+      const parts = body.split('--' + boundary);
+      for (const part of parts) {
+        if (/content-type:\s*text\/plain/i.test(part)) {
+          const pSep = part.indexOf('\r\n\r\n') !== -1 ? part.indexOf('\r\n\r\n') + 4 : part.indexOf('\n\n') + 2;
+          if (pSep > 2) { body = part.slice(pSep); break; }
+        }
+      }
+    }
+    const cleaned = body.split('\n').filter(l => !l.trim().startsWith('>')).join('\n');
+    const sigIdx = cleaned.search(/\n--\s*\n|\n-- \n/);
+    return (sigIdx !== -1 ? cleaned.slice(0, sigIdx) : cleaned).trim().slice(0, 2000);
+  }
+
   let repliesFound = 0;
+  let inboxMatches = 0;
+
   try {
     await client.connect();
     const lock = await client.getMailboxLock('INBOX');
     try {
-      // Fetch recent messages (last 50)
+      // Only fetch messages since the last check (or last 7 days if first run)
+      const sinceDate = account.lastChecked
+        ? new Date(account.lastChecked)
+        : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+      // Search for new message UIDs since lastChecked
+      let uids: number[] = [];
+      try {
+        uids = await client.search({ since: sinceDate }, { uid: true });
+      } catch (_) {
+        // Fallback: fetch all if search not supported
+        uids = await client.search({ all: true }, { uid: true });
+      }
+
+      if (uids.length === 0) {
+        return { repliesFound: 0, inboxMatches: 0 };
+      }
+
       const messages: any[] = [];
-      for await (const msg of client.fetch('1:*', {
-        envelope: true,
-        source: { headersOnly: true },
-      })) {
+      for await (const msg of client.fetch(uids, { envelope: true, source: { headersOnly: true } }, { uid: true })) {
         messages.push(msg);
       }
 
-      // Get all sent message IDs from campaign recipients
+      // ── PART 1: Campaign reply detection ──
       const sentRecipients = await db.all(
-        "SELECT * FROM email_campaign_recipients WHERE status = 'sent' AND messageId != '' AND repliedAt = ''"
-      , []) as any[];
-
-      if (sentRecipients.length === 0) {
-        return 0;
-      }
-
+        "SELECT * FROM email_campaign_recipients WHERE status = 'sent' AND messageId != '' AND repliedAt = ''",
+        []
+      ) as any[];
       const sentMessageIds = new Set(sentRecipients.map((r: any) => r.messageId.replace(/[<>]/g, '')));
+      // Track which Message-IDs we handle as campaign replies (to skip in inbox scanner)
+      const handledAsReply = new Set<string>();
 
       for (const msg of messages) {
         const inReplyTo = (msg.envelope?.inReplyTo || '').replace(/[<>]/g, '').trim();
         const references = (msg.envelope?.references || '').replace(/[<>]/g, ' ').split(/\s+/).filter(Boolean);
-
         const matchId = [...references, inReplyTo].find(id => id && sentMessageIds.has(id));
         if (!matchId) continue;
 
-        // Find which recipient this matches
         const recipient = sentRecipients.find((r: any) => r.messageId.replace(/[<>]/g, '') === matchId);
         if (!recipient) continue;
 
-        const now = new Date().toISOString();
+        const msgId = (msg.envelope?.messageId || '').replace(/[<>]/g, '').trim();
+        if (msgId) handledAsReply.add(msgId);
 
-        // Get reply text — fetch raw source and extract plain text body
+        const now = new Date().toISOString();
         let replyText = `Risposta ricevuta da ${msg.envelope?.from?.[0]?.address || recipient.email}`;
         try {
           const fullMsg = await client.fetchOne(String(msg.seq), { source: true });
           if (fullMsg?.source) {
-            const raw = fullMsg.source.toString('utf8');
-            // Split headers from body (double CRLF or LF)
-            const sepIdx = raw.indexOf('\r\n\r\n') !== -1 ? raw.indexOf('\r\n\r\n') + 4 : raw.indexOf('\n\n') + 2;
-            let body = sepIdx > 2 ? raw.slice(sepIdx) : '';
-            // If multipart, try to extract the first text/plain section
-            const boundaryMatch = raw.match(/boundary="?([^"\r\n;]+)"?/i);
-            if (boundaryMatch) {
-              const boundary = boundaryMatch[1].trim();
-              const parts = body.split('--' + boundary);
-              for (const part of parts) {
-                if (/content-type:\s*text\/plain/i.test(part)) {
-                  const pSep = part.indexOf('\r\n\r\n') !== -1 ? part.indexOf('\r\n\r\n') + 4 : part.indexOf('\n\n') + 2;
-                  if (pSep > 2) { body = part.slice(pSep); break; }
-                }
-              }
-            }
-            // Strip quoted lines (>) and signatures (--)
-            const lines = body.split('\n');
-            const cleaned = lines
-              .filter(l => !l.trim().startsWith('>'))
-              .join('\n');
-            const sigIdx = cleaned.search(/\n--\s*\n|\n-- \n/);
-            const finalText = (sigIdx !== -1 ? cleaned.slice(0, sigIdx) : cleaned).trim();
-            if (finalText.length > 0) replyText = finalText.slice(0, 2000);
+            const parsed = extractBodyText(fullMsg.source);
+            if (parsed.length > 0) replyText = parsed;
           }
-        } catch (bodyErr) {
-          // fallback to envelope info already set
-        }
+        } catch (_) { /* use fallback */ }
 
-        // If replied, lead MUST have opened the email!
         if (!recipient.openedAt) {
           await db.run('UPDATE email_campaign_recipients SET openedAt = ? WHERE id = ?', [now, recipient.id]);
           await db.run('UPDATE email_campaigns SET totalOpened = totalOpened + 1 WHERE id = ?', [recipient.campaignId]);
         }
-
         await db.run('UPDATE email_campaign_recipients SET repliedAt = ?, replyText = ? WHERE id = ?', [now, replyText, recipient.id]);
         await db.run('UPDATE email_campaigns SET totalReplied = totalReplied + 1 WHERE id = ?', [recipient.campaignId]);
 
         const lead = await db.get('SELECT * FROM leads WHERE id = ?', [recipient.leadId]) as any;
-        await db.run(`
-          INSERT INTO history (id, leadId, timestamp, colleague, note, statusAfterCall, type)
-          VALUES (?, ?, ?, ?, ?, ?, 'email')
-        `, [randomUUID(),
-          recipient.leadId,
-          now,
-          'IMAP Monitor',
-          `💬 [RISPOSTA EMAIL RICEVUTA] Il lead ha risposto all'email della campagna:\n\n${replyText.slice(0, 500)}`,
-          lead?.status || '']);
-
+        await db.run(
+          `INSERT INTO history (id, leadId, timestamp, colleague, note, statusAfterCall, type) VALUES (?, ?, ?, ?, ?, ?, 'email')`,
+          [randomUUID(), recipient.leadId, now, 'IMAP Monitor',
+           `💬 [RISPOSTA EMAIL RICEVUTA] Il lead ha risposto all'email della campagna:\n\n${replyText.slice(0, 500)}`,
+           lead?.status || '']
+        );
         repliesFound++;
       }
+
+      // ── PART 2: Inbox Scanner — match email by sender address ──
+      const allLeads = await db.all(
+        "SELECT id, email, name, status FROM leads WHERE email IS NOT NULL AND email != ''", []
+      ) as any[];
+      const leadsByEmail = new Map(allLeads.map(l => [l.email.toLowerCase().trim(), l]));
+      const ownEmail = (account.user_email || '').toLowerCase().trim();
+
+      for (const msg of messages) {
+        const msgId = (msg.envelope?.messageId || '').replace(/[<>]/g, '').trim();
+        // Skip messages already processed as campaign replies
+        if (msgId && handledAsReply.has(msgId)) continue;
+
+        const senderEmail = (msg.envelope?.from?.[0]?.address || '').toLowerCase().trim();
+        // Skip empty sender or messages sent from ourselves
+        if (!senderEmail || senderEmail === ownEmail) continue;
+
+        const matchedLead = leadsByEmail.get(senderEmail);
+        if (!matchedLead) continue;
+
+        // Avoid duplicates: check if this Message-ID is already logged
+        if (msgId) {
+          const alreadyLogged = await db.get(
+            "SELECT id FROM history WHERE note LIKE ? LIMIT 1",
+            [`%[MSGID:${msgId}]%`]
+          );
+          if (alreadyLogged) continue;
+        }
+
+        const now = new Date().toISOString();
+        const subject = msg.envelope?.subject || '(nessun oggetto)';
+        let bodyText = `Email ricevuta da ${senderEmail}`;
+        try {
+          const fullMsg = await client.fetchOne(String(msg.seq), { source: true });
+          if (fullMsg?.source) {
+            const parsed = extractBodyText(fullMsg.source);
+            if (parsed.length > 0) bodyText = parsed;
+          }
+        } catch (_) { /* use fallback */ }
+
+        // Tag hidden [MSGID:...] per deduplicazione futura
+        const noteContent =
+          `📩 [EMAIL RICEVUTA] Da: ${senderEmail}\nOggetto: "${subject}"\n\n${bodyText.slice(0, 1500)}` +
+          (msgId ? `\n\n[MSGID:${msgId}]` : '');
+
+        await db.run(
+          `INSERT INTO history (id, leadId, timestamp, colleague, note, statusAfterCall, type) VALUES (?, ?, ?, ?, ?, ?, 'email')`,
+          [randomUUID(), matchedLead.id, now, 'Inbox Scanner', noteContent, matchedLead.status || '']
+        );
+        console.log(`[INBOX SCANNER] Email da "${senderEmail}" abbinata al lead "${matchedLead.name}"`);
+        inboxMatches++;
+      }
+
     } finally {
       lock.release();
     }
@@ -2081,9 +2136,9 @@ async function runImapCheck(account: any): Promise<number> {
     throw err;
   }
 
-  // Update lastChecked
   await db.run("UPDATE imap_accounts SET lastChecked = ? WHERE id = ?", [new Date().toISOString(), account.id]);
-  return repliesFound;
+  console.log(`[IMAP CHECK] "${account.name}": ${repliesFound} risposte campagna, ${inboxMatches} email inbox abbinate`);
+  return { repliesFound, inboxMatches };
 }
 
 // ── IMAP POLLING JOB (every 10 min) ──
@@ -2093,8 +2148,9 @@ setInterval(async () => {
   console.log(`[IMAP POLL] Controllo ${accounts.length} account IMAP...`);
   for (const acc of accounts) {
     try {
-      const found = await runImapCheck(acc);
-      if (found > 0) console.log(`[IMAP POLL] ${acc.name}: ${found} nuove risposte trovate.`);
+      const { repliesFound, inboxMatches } = await runImapCheck(acc);
+      if (repliesFound > 0 || inboxMatches > 0)
+        console.log(`[IMAP POLL] ${acc.name}: ${repliesFound} risposte campagna, ${inboxMatches} email scanner.`);
     } catch (e) {
       console.error(`[IMAP POLL] Errore account ${acc.name}:`, e);
     }
