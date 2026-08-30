@@ -35,7 +35,7 @@ Tutti gli account preesistenti hanno come password iniziale: **`SolarBrand2026!`
 | **Andrea Conti** | `venditore` | `andrea.conti@solarbrand.it` | `SolarBrand2026!` | Agente Commerciale |
 | **Fabio Test** | `venditore` | `fabio_test@solarbrand.it` | `SolarBrand2026!` | Agente Commerciale |
 
-*💡 **Come cambiare email/password**: Entra come Erika (`erika@solarbrand.it`), clicca su **Gestione Utenti / Team** in alto e modifica qualsiasi email, password o aggiungi nuovi colleghi.*
+*💡 **Come cambiare email/password**: Entra come Erika (`erika@solarbrand.it`), clicca su **Gestione Utenti / Team** in alto e modifica qualsiasi email, password o aggiungi nuovi colleghi. Il sistema mostra un banner verde di conferma con la password in chiaro appena impostata e permette di visualizzarla con l'icona a occhio.*
 
 ---
 

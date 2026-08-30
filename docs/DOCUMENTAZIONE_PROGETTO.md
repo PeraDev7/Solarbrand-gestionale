@@ -56,6 +56,12 @@ L'applicazione supporta il flusso operativo aziendale completo con due portali d
 - I controlli di background eseguiti ogni 30 secondi per verificare nuovi appuntamenti e notifiche non mostrano più spinner bloccanti (`isInitial = false`), garantendo una navigazione fluida e senza flickering.
 - Ottimizzazione caricamento report con endpoint dedicato `GET /api/history`.
 
+### 2.4 Feedback Visivo e Trasparenza Gestione Team / Credenziali
+- **Conferma Password Visibile**: Quando l'amministratore imposta o reimposta la password di un utente, viene mostrato un banner verde di successo contenente la password salvata in chiaro (in evidenza con font monospaziato), eliminando ogni ambiguità sul salvataggio.
+- **Toggle Visibilità Password**: Aggiunta icona ad occhio (`Eye` / `EyeOff`) per visualizzare o mascherare la password durante la digitazione.
+- **Feedback Immediato Modifica Email e Ruolo**: Banner e badge animati per confermare istantaneamente l'avvenuto aggiornamento di email e ruolo senza ricaricare la pagina o mostrare alert invasivi.
+- **Password Iniziale in Creazione Profilo**: Possibilità di impostare direttamente la password iniziale durante la creazione di un nuovo operatore.
+
 ---
 
 ## 3. Guida alla Configurazione di Google Calendar OAuth
