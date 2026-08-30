@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
-import { X, Save, Server, AlertCircle, Plus, Trash2, Key, Building2 } from 'lucide-react';
+import { X, Save, Server, AlertCircle, Plus, Trash2, Key, Building2, Eye, EyeOff } from 'lucide-react';
 import { SmtpAccount } from '../types';
 
 interface SmtpSettingsManagerProps {
@@ -13,6 +13,7 @@ export default function SmtpSettingsManager({ onClose }: SmtpSettingsManagerProp
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [apifyToken, setApifyToken] = useState('');
+  const [showApifyToken, setShowApifyToken] = useState(false);
   const [apifyTokenSaved, setApifyTokenSaved] = useState(false);
   const [publicUrl, setPublicUrl] = useState('');
   const [publicUrlSaved, setPublicUrlSaved] = useState(false);
@@ -200,13 +201,23 @@ export default function SmtpSettingsManager({ onClose }: SmtpSettingsManagerProp
               Inserisci il tuo Token API personale di Apify per estrarre lead territoriali con Google Maps Scraper (con email e telefono).
             </p>
             <div className="flex gap-2">
-              <input
-                type="password"
-                value={apifyToken}
-                onChange={e => setApifyToken(e.target.value)}
-                placeholder="apify_api_..."
-                className="flex-1 bg-white border border-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
+              <div className="relative flex-1">
+                <input
+                  type={showApifyToken ? 'text' : 'password'}
+                  value={apifyToken}
+                  onChange={e => { setApifyToken(e.target.value); setApifyTokenSaved(false); }}
+                  placeholder="apify_api_..."
+                  className="w-full bg-white border border-slate-200 text-sm rounded-xl px-4 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-mono text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApifyToken(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  title={showApifyToken ? 'Nascondi token' : 'Mostra token'}
+                >
+                  {showApifyToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
               <button
                 onClick={handleSaveApifyToken}
                 className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all cursor-pointer"

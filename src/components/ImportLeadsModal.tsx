@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { read, utils } from 'xlsx';
-import { X, UploadCloud, FileSpreadsheet, CheckCircle, AlertTriangle, Globe, MapPin, Search, Key, HelpCircle, Save, Sparkles, Send, Mail, Loader2 } from 'lucide-react';
+import { X, UploadCloud, FileSpreadsheet, CheckCircle, AlertTriangle, Globe, MapPin, Search, Key, HelpCircle, Save, Sparkles, Send, Mail, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Lead } from '../types';
 import { api, authFetch as fetch } from '../lib/api';
 
@@ -509,6 +509,7 @@ function FileImportTab({ leads, services, colleagues = [], activeColleague = '',
 
 function ApifyGoogleMapsTab({ onClose }: { onClose: () => void }) {
   const [apifyToken, setApifyToken] = useState('');
+  const [showToken, setShowToken] = useState(false);
   const [isTokenSaved, setIsTokenSaved] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
 
@@ -664,12 +665,20 @@ function ApifyGoogleMapsTab({ onClose }: { onClose: () => void }) {
           <div className="relative flex-1">
             <Key className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
             <input
-              type="password"
+              type={showToken ? "text" : "password"}
               placeholder="Incolla qui il tuo token Apify (es. apify_api_xxxx...)"
               value={apifyToken}
               onChange={e => { setApifyToken(e.target.value); setIsTokenSaved(false); }}
-              className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-mono text-xs rounded-xl pl-10 pr-4 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-mono text-xs rounded-xl pl-10 pr-10 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             />
+            <button
+              type="button"
+              onClick={() => setShowToken(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+              title={showToken ? 'Nascondi token' : 'Mostra token'}
+            >
+              {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
           </div>
 
           <button
