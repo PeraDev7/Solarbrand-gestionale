@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { Colleague, Service } from '../types';
-import { Plus, Trash2, X, Users, Briefcase, Calendar, KeyRound, Check, Mail } from 'lucide-react';
+import { Plus, Trash2, X, Users, Briefcase, Calendar, KeyRound, Check, Mail, Eye, EyeOff, UserCheck } from 'lucide-react';
 
 interface SuperAdminAreaProps {
   onClose: () => void;
@@ -18,13 +18,20 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
   const [newColleagueName, setNewColleagueName] = useState('');
   const [newColleagueEmail, setNewColleagueEmail] = useState('');
   const [newColleagueRole, setNewColleagueRole] = useState<'telefonista' | 'venditore' | 'admin'>('telefonista');
+  const [newColleaguePassword, setNewColleaguePassword] = useState('');
   const [newService, setNewService] = useState('');
+  const [colleagueSuccess, setColleagueSuccess] = useState('');
 
   const [credentialsEditId, setCredentialsEditId] = useState<string | null>(null);
   const [emailDraft, setEmailDraft] = useState('');
   const [emailError, setEmailError] = useState('');
+  const [emailSuccess, setEmailSuccess] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [savedPassword, setSavedPassword] = useState(''); // shows last saved password
+  const [showPassword, setShowPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [roleSuccessId, setRoleSuccessId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -49,11 +56,21 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
   const addColleague = async () => {
     if (!newColleagueName.trim()) return;
     try {
-      await api.createColleague({ name: newColleagueName.trim(), role: newColleagueRole, email: newColleagueEmail.trim() });
+      const created = await api.createColleague({ name: newColleagueName.trim(), role: newColleagueRole, email: newColleagueEmail.trim() });
+      // If a password was provided, set it immediately
+      if (newColleaguePassword.trim().length >= 6 && created?.id) {
+        const adminPassword = window.prompt('Password amministratore per impostare la password del nuovo utente:');
+        if (adminPassword) {
+          await api.setPassword(created.id, newColleaguePassword.trim(), adminPassword);
+        }
+      }
+      setColleagueSuccess(`✅ Profilo di "${newColleagueName.trim()}" creato con successo!`);
       setNewColleagueName('');
       setNewColleagueEmail('');
+      setNewColleaguePassword('');
       await fetchData();
       onUpdate();
+      setTimeout(() => setColleagueSuccess(''), 4000);
     } catch (err: any) {
       alert(err.message || 'Errore aggiunta utente');
     }
@@ -62,8 +79,10 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
   const updateRole = async (col: Colleague, role: 'telefonista' | 'venditore' | 'admin') => {
     try {
       await api.updateColleague(col.id, { role });
+      setRoleSuccessId(col.id);
       await fetchData();
       onUpdate();
+      setTimeout(() => setRoleSuccessId(null), 3000);
     } catch (err: any) {
       alert('Errore aggiornamento ruolo');
     }
@@ -77,8 +96,10 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
     try {
       await api.updateColleague(col.id, { email: emailDraft.trim() });
       setEmailError('');
+      setEmailSuccess(`✅ Email aggiornata: ${emailDraft.trim()}`);
       await fetchData();
       onUpdate();
+      setTimeout(() => setEmailSuccess(''), 4000);
     } catch (err: any) {
       setEmailError(err.message || 'Errore aggiornamento email');
     }
@@ -92,10 +113,14 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
     const adminPassword = window.prompt('Password amministratore per confermare la modifica:');
     if (!adminPassword) return;
     try {
-      await api.setPassword(col.id, newPassword, adminPassword);
+      const pwdToSave = newPassword;
+      await api.setPassword(col.id, pwdToSave, adminPassword);
+      setSavedPassword(pwdToSave);
       setNewPassword('');
       setPasswordError('');
+      setPasswordSuccess(`✅ Password salvata con successo!`);
       await fetchData();
+      setTimeout(() => setPasswordSuccess(''), 6000);
     } catch (err: any) {
       setPasswordError(err.message || 'Errore impostazione password');
     }
@@ -192,6 +217,17 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
                 </div>
 
                 <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">Password iniziale (opzionale)</label>
+                  <input
+                    type="text"
+                    placeholder="es. SolarBrand2026! (min 6 caratteri)"
+                    value={newColleaguePassword}
+                    onChange={e => setNewColleaguePassword(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
+                  />
+                </div>
+
+                <div>
                   <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">Ruolo Operatore</label>
                   <select
                     value={newColleagueRole}
@@ -211,6 +247,14 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
                   <Plus className="w-4 h-4" />
                   Crea Profilo
                 </button>
+
+                {/* Success banner for new colleague */}
+                {colleagueSuccess && (
+                  <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold px-3 py-2 rounded-xl">
+                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                    {colleagueSuccess}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -271,6 +315,12 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
                       }`}>
                         {col.role === 'venditore' ? 'Agente' : col.role === 'admin' ? 'Admin' : 'Ufficio'}
                       </span>
+                      {/* Role success flash */}
+                      {roleSuccessId === col.id && (
+                        <span className="flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
+                          <Check className="w-3 h-3" /> Ruolo aggiornato!
+                        </span>
+                      )}
                       {col.role === 'venditore' && (
                         <span className="flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-black px-2 py-0.5 rounded-lg ml-1">
                           ⭐ {col.avgRating ? Number(col.avgRating).toFixed(1) : '0.0'} ({col.reviewCount || 0})
@@ -309,8 +359,11 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
                           setCredentialsEditId(opening ? col.id : null);
                           setEmailDraft(opening ? (col.email || '') : '');
                           setEmailError('');
+                          setEmailSuccess('');
                           setNewPassword('');
+                          setSavedPassword('');
                           setPasswordError('');
+                          setPasswordSuccess('');
                         }}
                         className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
                         title="Gestisci email e password di login"
@@ -348,44 +401,80 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
 
                   {credentialsEditId === col.id && (
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[11px] font-bold text-slate-500 uppercase w-24 flex items-center gap-1">
-                          <Mail className="w-3.5 h-3.5" /> Email login
-                        </span>
-                        <input
-                          type="email"
-                          placeholder="email@solarbrand.it"
-                          value={emailDraft}
-                          onChange={e => { setEmailDraft(e.target.value); setEmailError(''); }}
-                          className="flex-1 min-w-[180px] bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
-                        />
-                        <button
-                          onClick={() => saveEmail(col)}
-                          className="bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold px-3 py-2 rounded-xl cursor-pointer"
-                        >
-                          Salva Email
-                        </button>
-                        {emailError && <span className="text-[11px] font-bold text-rose-600">{emailError}</span>}
+                      {/* Email row */}
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[11px] font-bold text-slate-500 uppercase w-24 flex items-center gap-1">
+                            <Mail className="w-3.5 h-3.5" /> Email login
+                          </span>
+                          <input
+                            type="email"
+                            placeholder="email@solarbrand.it"
+                            value={emailDraft}
+                            onChange={e => { setEmailDraft(e.target.value); setEmailError(''); setEmailSuccess(''); }}
+                            className="flex-1 min-w-[180px] bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                          />
+                          <button
+                            onClick={() => saveEmail(col)}
+                            className="bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold px-3 py-2 rounded-xl cursor-pointer"
+                          >
+                            Salva Email
+                          </button>
+                          {emailError && <span className="text-[11px] font-bold text-rose-600">{emailError}</span>}
+                        </div>
+                        {/* Email success banner */}
+                        {emailSuccess && (
+                          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold px-3 py-2 rounded-xl">
+                            <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                            {emailSuccess}
+                          </div>
+                        )}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3">
-                        <span className="text-[11px] font-bold text-slate-500 uppercase w-24 flex items-center gap-1">
-                          <KeyRound className="w-3.5 h-3.5" /> Password
-                        </span>
-                        <input
-                          type="password"
-                          placeholder="Nuova password (min 6 caratteri)"
-                          value={newPassword}
-                          onChange={e => setNewPassword(e.target.value)}
-                          className="flex-1 min-w-[180px] bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
-                        />
-                        <button
-                          onClick={() => submitPassword(col)}
-                          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-xl cursor-pointer"
-                        >
-                          Salva Password
-                        </button>
-                        {passwordError && <span className="text-[11px] font-bold text-rose-600">{passwordError}</span>}
+                      {/* Password row */}
+                      <div className="space-y-2 border-t border-slate-200 pt-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[11px] font-bold text-slate-500 uppercase w-24 flex items-center gap-1">
+                            <KeyRound className="w-3.5 h-3.5" /> Password
+                          </span>
+                          <div className="flex-1 min-w-[180px] relative">
+                            <input
+                              type={showPassword ? 'text' : 'password'}
+                              placeholder="Nuova password (min 6 caratteri)"
+                              value={newPassword}
+                              onChange={e => { setNewPassword(e.target.value); setPasswordError(''); }}
+                              className="w-full bg-white border border-slate-200 rounded-xl px-3 pr-9 py-2 text-xs"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(v => !v)}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                              title={showPassword ? 'Nascondi password' : 'Mostra password'}
+                            >
+                              {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                          <button
+                            onClick={() => submitPassword(col)}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-xl cursor-pointer"
+                          >
+                            Salva Password
+                          </button>
+                          {passwordError && <span className="text-[11px] font-bold text-rose-600">{passwordError}</span>}
+                        </div>
+
+                        {/* Password success banner with saved password visible */}
+                        {passwordSuccess && savedPassword && (
+                          <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold px-3 py-2.5 rounded-xl">
+                            <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <div>
+                              <div>{passwordSuccess}</div>
+                              <div className="mt-0.5 font-mono text-emerald-900 bg-emerald-100 rounded px-2 py-0.5 inline-block tracking-wide">
+                                {savedPassword}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
