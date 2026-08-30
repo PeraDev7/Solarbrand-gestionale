@@ -226,18 +226,8 @@ export default function SmtpSettingsManager({ onClose }: SmtpSettingsManagerProp
               {publicUrlSaved && <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">CONFIGURATO</span>}
             </div>
             <p className="text-xs text-slate-700">
-              <strong>Necessario per il tracking di aperture e click delle email.</strong>{' '}
-              Inserisci l'URL completo con cui il server è raggiungibile da internet (es. tramite ngrok, un dominio pubblico, ecc.).
-              Senza questo, i lead che aprono le email da Gmail/Outlook non verranno tracciati.
+              Indirizzo pubblico del gestionale utilizzato per registrare le aperture e i click dei clienti sulle email inviate.
             </p>
-            {!publicUrlSaved && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
-                <p className="font-bold mb-1">🔧 Come ottenere un URL pubblico in test:</p>
-                <p>1. Installa <strong>ngrok</strong>: <code className="bg-amber-100 px-1 rounded">choco install ngrok</code></p>
-                <p>2. Esponi il server: <code className="bg-amber-100 px-1 rounded">ngrok http 3000</code></p>
-                <p>3. Copia l'URL HTTPS generato (es. <code className="bg-amber-100 px-1 rounded">https://abc123.ngrok.io</code>) e incollalo qui.</p>
-              </div>
-            )}
             <div className="flex gap-2">
               <input
                 type="url"
