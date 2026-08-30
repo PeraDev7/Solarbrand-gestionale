@@ -159,7 +159,7 @@ app.post('/api/leads', async (req, res) => {
 // sistema (ringraziamento post-sopralluogo, richiesta recensione). Finché
 // nessuno lo sceglie esplicitamente, si ricade sul primo account creato.
 async function getCompanySmtpAccount(): Promise<any> {
-  const setting = await db.get("SELECT value FROM settings WHERE key = 'company_smtp_id'", []) as any;
+  const setting = await db.get("SELECT value FROM settings WHERE `key` = 'company_smtp_id'", []) as any;
   if (setting?.value) {
     const chosen = await db.get('SELECT * FROM smtp_accounts WHERE id = ?', [setting.value]);
     if (chosen) return chosen;
@@ -1125,7 +1125,7 @@ app.post('/api/leads/apify-search', async (req, res) => {
   try {
     const { industries, locations, fetch_count = 20, keywords, cities, wantsVerifiedEmail = true } = req.body || {};
 
-    const settingRow = await db.get("SELECT value FROM settings WHERE key IN ('apify_token', 'apify_api_key') ORDER BY CASE key WHEN 'apify_token' THEN 0 ELSE 1 END LIMIT 1", []) as any;
+    const settingRow = await db.get("SELECT value FROM settings WHERE `key` IN ('apify_token', 'apify_api_key') ORDER BY CASE `key` WHEN 'apify_token' THEN 0 ELSE 1 END LIMIT 1", []) as any;
     const apifyToken = (settingRow?.value || process.env.APIFY_TOKEN || process.env.APIFY_API_KEY || '').trim();
 
     if (!apifyToken) {
@@ -1714,7 +1714,7 @@ app.post('/api/email-campaigns/:id/send', async (req, res) => {
     await db.run("UPDATE email_campaigns SET status = 'sending', sentAt = ? WHERE id = ?", [new Date().toISOString(), campaign.id]);
 
     // Prefer the configured public_url (needed for tracking from external email clients)
-    publicUrlSetting = (await db.get("SELECT value FROM settings WHERE key = 'public_url'", []) as any)?.value || '';
+    publicUrlSetting = (await db.get("SELECT value FROM settings WHERE `key` = 'public_url'", []) as any)?.value || '';
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const host = req.get('host') || 'localhost:3000';
     baseUrl = publicUrlSetting.trim() || `${protocol}://${host}`;

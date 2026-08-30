@@ -25078,7 +25078,7 @@ app.post("/api/leads", async (req, res) => {
   res.status(201).json(lead);
 });
 async function getCompanySmtpAccount() {
-  const setting = await db.get("SELECT value FROM settings WHERE key = 'company_smtp_id'", []);
+  const setting = await db.get("SELECT value FROM settings WHERE `key` = 'company_smtp_id'", []);
   if (setting?.value) {
     const chosen = await db.get("SELECT * FROM smtp_accounts WHERE id = ?", [setting.value]);
     if (chosen) return chosen;
@@ -25911,7 +25911,7 @@ app.post("/api/leads/import", async (req, res) => {
 app.post("/api/leads/apify-search", async (req, res) => {
   try {
     const { industries, locations, fetch_count = 20, keywords, cities, wantsVerifiedEmail = true } = req.body || {};
-    const settingRow = await db.get("SELECT value FROM settings WHERE key IN ('apify_token', 'apify_api_key') ORDER BY CASE key WHEN 'apify_token' THEN 0 ELSE 1 END LIMIT 1", []);
+    const settingRow = await db.get("SELECT value FROM settings WHERE `key` IN ('apify_token', 'apify_api_key') ORDER BY CASE `key` WHEN 'apify_token' THEN 0 ELSE 1 END LIMIT 1", []);
     const apifyToken = (settingRow?.value || process.env.APIFY_TOKEN || process.env.APIFY_API_KEY || "").trim();
     if (!apifyToken) {
       return res.status(400).json({ error: "Token API Apify non configurato. Salvalo prima nelle impostazioni di ricerca." });
@@ -26415,7 +26415,7 @@ app.post("/api/email-campaigns/:id/send", async (req, res) => {
       return res.status(400).json({ error: "Nessun destinatario in stato pending" });
     }
     await db.run("UPDATE email_campaigns SET status = 'sending', sentAt = ? WHERE id = ?", [(/* @__PURE__ */ new Date()).toISOString(), campaign.id]);
-    publicUrlSetting = (await db.get("SELECT value FROM settings WHERE key = 'public_url'", []))?.value || "";
+    publicUrlSetting = (await db.get("SELECT value FROM settings WHERE `key` = 'public_url'", []))?.value || "";
     const protocol = req.headers["x-forwarded-proto"] || req.protocol;
     const host = req.get("host") || "localhost:3000";
     baseUrl = publicUrlSetting.trim() || `${protocol}://${host}`;
