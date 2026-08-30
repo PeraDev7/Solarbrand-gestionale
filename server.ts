@@ -1139,7 +1139,9 @@ app.post('/api/leads/apify-search', async (req, res) => {
 
     const locationQuery = buildLocationQuery(locations, cities);
     const targetCount = Math.max(1, Math.min(Number(fetch_count) || 20, 200));
-    const initialBatchSize = Math.max(1, Math.ceil((targetCount * 1.5) / searchStrings.length));
+    // Su Google Maps circa il 25-35% delle attività possiede email e telefono estratti dal sito.
+    // Per garantire l'esatto numero target richiesto, scansioniamo 3.5x - 4x schede iniziali.
+    const initialBatchSize = Math.max(25, Math.ceil((targetCount * 3.5) / searchStrings.length));
 
     const actorInput = buildActorInput(searchStrings, locationQuery, initialBatchSize, Boolean(wantsVerifiedEmail));
     const started = await startApifyRun(apifyToken, actorInput);
@@ -1197,7 +1199,7 @@ app.get('/api/leads/apify-search/status', async (req, res) => {
         status: 'RUNNING',
         foundSoFar: job.collectedLeads.length,
         roundsDone: job.roundsDone,
-        message: 'Scansione Google Maps e arricchimento contatti in corso...',
+        message: `Scansione Google Maps e arricchimento in corso (${job.collectedLeads.length}/${job.targetCount} lead completi con Email e Telefono)...`,
       });
     }
 
@@ -1231,13 +1233,13 @@ app.get('/api/leads/apify-search/status', async (req, res) => {
       }
     }
 
-    // Multi-round check: If not enough qualified leads (email + phone) and more rounds allowed
+    // Multi-round check: se non abbiamo ancora raggiunto il target esatto di lead qualificati (email + tel), lanciamo un round aggiuntivo
     if (
       job.collectedLeads.length < job.targetCount &&
-      job.roundsDone < 2 &&
-      placesScanned >= job.currentBatchSize * job.searchStrings.length
+      job.roundsDone < 3
     ) {
-      const newBatchSize = job.currentBatchSize * 2;
+      const remaining = job.targetCount - job.collectedLeads.length;
+      const newBatchSize = Math.max(Math.ceil(job.currentBatchSize * 1.5), Math.ceil((remaining * 4) / job.searchStrings.length));
       const actorInput = buildActorInput(job.searchStrings, job.locationQuery, newBatchSize, job.wantsVerifiedEmail);
       const newRun = await startApifyRun(job.apifyToken, actorInput);
 
@@ -1251,7 +1253,7 @@ app.get('/api/leads/apify-search/status', async (req, res) => {
           status: 'RUNNING',
           foundSoFar: job.collectedLeads.length,
           roundsDone: job.roundsDone + 1,
-          message: `Avviato round ${job.roundsDone + 2} per raccogliere i ${job.targetCount} lead richiesti...`,
+          message: `Trovati finora ${job.collectedLeads.length}/${job.targetCount} lead completi (Email + Tel). Ricerca automatica dei rimanenti ${remaining} contatti in corso (Round ${job.roundsDone + 2})...`,
         });
       }
     }
