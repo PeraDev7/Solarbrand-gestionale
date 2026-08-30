@@ -2,13 +2,14 @@
 
 > 🟢 **STATO SISTEMA: ONLINE E ATTIVO SU HOSTINGER**  
 > **URL PUBBLICO**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
-> **REPOSITORY GITHUB (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)
+> **REPOSITORY GITHUB (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
+> **VERSIONE ATTUALE**: 3.7 (Tracking Email Live + Inbox Scanner IMAP + MariaDB Escaped)
 
 ---
 
 ## 🔑 RIEPILOGO PERMANENTE CREDENZIALI & ACCESSI
 
-### 🗄️ Database MySQL (Hostinger)
+### 🗄️ Database MariaDB / MySQL (Hostinger)
 | Parametro | Valore |
 |---|---|
 | **Host** | `localhost` |
@@ -35,65 +36,49 @@ Tutti gli account preesistenti hanno come password iniziale: **`SolarBrand2026!`
 | **Andrea Conti** | `venditore` | `andrea.conti@solarbrand.it` | `SolarBrand2026!` | Agente Commerciale |
 | **Fabio Test** | `venditore` | `fabio_test@solarbrand.it` | `SolarBrand2026!` | Agente Commerciale |
 
-*💡 **Come cambiare email/password**: Entra come Erika (`erika@solarbrand.it`), clicca su **Gestione Utenti / Team** in alto e modifica qualsiasi email, password o aggiungi nuovi colleghi. Il sistema mostra un banner verde di conferma con la password in chiaro appena impostata e permette di visualizzarla con l'icona a occhio.*
+*💡 **Gestione Team**: Da Erika (`erika@solarbrand.it`), clicca su **Gestione Utenti / Team** in alto per aggiungere o modificare colleghi. Il sistema mostra la conferma visiva in chiaro della password impostata e permette di visualizzarla con l'icona occhio.*
+
+---
+
+## 📧 CONFIGURAZIONE EMAIL, TRACKING & INBOX SCANNER
+
+### 📤 SMTP Aziendale (Invio Campagne & Notifiche)
+- **Host**: `smtp.hostinger.com` | **Porta**: `587` | **Email**: `info@solarbrandkg.it`
+- **URL Pubblico Tracking**: `https://crm.solarbrandkg.it` (impostato automaticamente in `settings`)
+- **Pixel Aperture**: GIF 1x1 trasparente (`/api/email-track/open?eid=...`)
+- **Click Tracking**: Redirect 302 (`/api/email-track/click?eid=...&url=...`)
+
+### 📥 IMAP Aziendale & Inbox Scanner (Lettura Risposte & Email)
+- **Host**: `imap.hostinger.com` | **Porta**: `993` (SSL) | **Email**: `info@solarbrandkg.it`
+- **Polling Automatico**: Eseguito in background ogni 10 minuti dal server.
+- **Funzionalità**:
+  1. **Risposte a Campagne**: Riconosce `In-Reply-To` / `References` e aggiorna le metriche della campagna.
+  2. **Inbox Scanner per Lead**: Se un mittente corrisponde a un'email di un lead in anagrafica, aggiunge automaticamente una nota `📩 [EMAIL RICEVUTA]` con testo ed oggetto nella scheda del cliente.
+  3. **Pulsante "Controlla ora"**: Forzatura manuale istantanea con feedback completo su risposte ed email abbinate.
 
 ---
 
 ## 📅 INTEGRAZIONE GOOGLE CALENDAR (OAUTH 2.0)
 
-Configurato con successo tramite Google Cloud Console e Hostinger:
-
 - **Progetto Google Cloud**: `SolarBrand Flow`
 - **Ambito API**: `https://www.googleapis.com/auth/calendar.events`
-- **URI di Reindirizzamento Autorizzati**:
-  - `https://crm.solarbrandkg.it/api/auth/google/callback`
-  - `http://localhost:3000/api/auth/google/callback`
-- **Variabili d'Ambiente su Hostinger**:
-  ```env
-  GOOGLE_CLIENT_ID=549446315818-cuk21asmn7oii38n16dhlib94961q8hl.apps.googleusercontent.com
-  GOOGLE_CLIENT_SECRET=GOCSPX-PJf...[Configurato in Hostinger]
-  GOOGLE_REDIRECT_URI=https://crm.solarbrandkg.it/api/auth/google/callback
-  ```
-- **Funzionamento**: Ciascun venditore accede al portale venditori su `https://crm.solarbrandkg.it` e clicca su *"Collega Google Calendar"*. L'app sincronizza gli appuntamenti direttamente sul suo calendario personale.
+- **URI di Reindirizzamento**: `https://crm.solarbrandkg.it/api/auth/google/callback`
+- **Funzionamento**: Ciascun venditore collega il proprio Google Calendar personale per ricevere sincronizzazioni istantanee degli appuntamenti fissati dall'ufficio.
 
 ---
 
 ## 💻 Ambiente Locale e Build su Windows
-
-Google Drive su Windows usa modalità streaming virtuale (i file estratti in `node_modules` sono vuoti). Per build e test locali:
 
 | Ruolo | Percorso |
 |---|---|
 | **Sorgenti & Repository GitHub** | `H:\Il mio Drive\Siti in TRAE\SolarBrand - gestionale chiamate\app vera e propria\` |
 | **Runtime / Build Locale** | `C:\npm_tmp2\` |
 
-### Avvio Locale Semplice:
-Doppio click su **`AVVIA_APP_LOCALE.bat`** (apre `http://localhost:3000` con SQLite e dati completi).
-
----
-
-## 🚀 VARIABILI D'AMBIENTE COMPLETE IN PRODUZIONE (HOSTINGER)
-
-Nel pannello di Hostinger ➔ *Node.js / Web App* ➔ *Variabili d'ambiente*:
-
-```env
-NODE_ENV=production
-PORT=3000
-DEMO_MODE=false
-ADMIN_PASSWORD=SolarBrand2026!
-OPERATOR_SECRET=Operatori2026!
-
-DB_TYPE=mysql
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=u437201618_solarbrand
-DB_USER=u437201618_solarbrand
-DB_PASS=123Noscusa!1234
-
-GOOGLE_CLIENT_ID=549446315818-cuk21asmn7oii38n16dhlib94961q8hl.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-PJf...[Configurato in Hostinger]
-GOOGLE_REDIRECT_URI=https://crm.solarbrandkg.it/api/auth/google/callback
-
-# Token Apify (opzionale se inserito da interfaccia gestionale)
-APIFY_TOKEN=
+### Procedura di Build e Push:
+```powershell
+cmd /c "xcopy /s /y /q src C:\npm_tmp2\src\ && copy /y server.ts C:\npm_tmp2\server.ts && cd /d C:\npm_tmp2 && npx vite build && npx esbuild server.ts --bundle --platform=node --format=cjs --outfile=dist/server.cjs --external:mysql2 --external:better-sqlite3 --external:nodemailer --external:imapflow --external:googleapis --external:vite"
+cmd /c "xcopy /s /y /q C:\npm_tmp2\dist dist\"
+git add -A
+git commit -m "messaggio"
+git push origin main
 ```

@@ -3,8 +3,8 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 3.6 (Architettura Dual-Engine + Google Calendar OAuth per-Agente + Gestione Assegnazione Lead + Auth Multi-Campo + Silent Polling)  
-> **Architettura**: Vite + React 19 + TypeScript + Express + MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
+> **Versione**: 3.7 (Tracking Email End-to-End + Inbox Scanner IMAP Automatico + Compatibilità MariaDB Key + Dual-Engine)  
+> **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
 
@@ -20,6 +20,11 @@ L'applicazione supporta il flusso operativo aziendale completo con due portali d
   - Menu a tendina filtri nella tab *Gestione Lead* per filtrare per Telefonista assegnato, Agente commerciale, oppure *⚠️ Non Assegnati*.
   - Riassegnazione immediata 1-click direttamente dall'intestazione della scheda lead.
   - Assegnazione automatica predefinita durante l'importazione da file Excel/CSV.
+- **Campagne Email Marketing & Tracking Completo**:
+  - Creazione ed invio massivo email tramite account SMTP aziendale (`info@solarbrandkg.it`).
+  - **Pixel Tracking 1x1 Invisibile**: traccia l'esatto momento dell'apertura email.
+  - **Click Tracking con Redirect 302**: riscrive i link nelle email e traccia l'interazione del lead.
+  - **Inbox Scanner & Monitoraggio Risposte IMAP**: intercetta sia le risposte alle campagne sia le email spontanee inviate dai clienti registrati.
 - **Assegnazione Sopralluoghi & Richiami**: Fissa due tipologie distinte di appuntamento:
   - 📞 **Richiamo Telefonico Ufficio**: per ricontattare internamente il lead via telefono.
   - 🏠 **Sopralluogo Fisico Agente**: affida l'appuntamento sul campo ad uno specifico agente commerciale (es. *Marco Rossi*, *Stefano Bianchi*, ecc.).
@@ -40,96 +45,60 @@ L'applicazione supporta il flusso operativo aziendale completo con due portali d
 
 ---
 
-## 2. Nuove Funzionalità Avanzate & Aggiornamenti Recenti
+## 2. Funzionalità Avanzate & Aggiornamenti Recenti (v3.7)
 
-### 2.1 Integrazione Google Calendar OAuth 2.0 su Dominio di Produzione
-- **Dominio Attivo**: `https://crm.solarbrandkg.it`
-- **Autenticazione OAuth 2.0 Centralizzata**: L'applicazione server gestisce l'handshake OAuth2 con Google Cloud Platform.
-- **Sicurezza Variabili d'Ambiente**: I parametri `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` e `GOOGLE_REDIRECT_URI` sono configurati direttamente nel pannello sicuro di Hostinger (senza esporre secret nel repository git).
+### 2.1 Tracking Email End-to-End & Monitoraggio Campagne
+- **Verificato e Attivo Live**: Il sistema di tracking (`/api/email-track/open` e `/api/email-track/click`) è collaudato con successo sul dominio `https://crm.solarbrandkg.it`.
+- **Pixel di Tracciamento**: GIF trasparente 1x1 iniettata automaticamente nel body delle email con timestamp preciso di apertura.
+- **Riscrizione Link Click-Tracking**: Ogni link contenuto nei template viene convertito in URL tracciato che registra il click e redireziona istantaneamente all'URL di destinazione.
 
-### 2.2 Autenticazione Flessibile e Sincronizzazione Super Admin
-- **Accesso Multi-Identificatore**: È possibile effettuare il login inserendo l'email completa (`erika@solarbrand.it`), lo username (`erika`) o il nome visualizzato (`Erika`).
-- **Verifica e Auto-Migrazione Password**: Il sistema supporta l'algoritmo di hashing `scrypt` e gestisce l'auto-aggiornamento trasparente per la password di avvio `SolarBrand2026!`.
-- **Garantito Profilo Super Admin**: `initDb()` verifica e assicura sempre l'esistenza dell'account amministratore Erika con privilegi `admin`.
+### 2.2 Inbox Scanner IMAP & Riconoscimento Automatico Risposte
+- **Scanner Intelligente per Mittente**: Ad ogni ciclo di polling (ogni 10 minuti o manuale tramite pulsante *"Controlla ora"*), il server analizza la casella IMAP (`imap.hostinger.com:993`).
+- **Doppio Canale di Riconoscimento**:
+  1. **Risposte Campagne (`In-Reply-To`)**: aggiorna i contatori della campagna e segna il lead come *Ha risposto*.
+  2. **Email Spontanee da Lead Anagrafica**: se un lead già censito nel gestionale invia un'email di sua iniziativa o risponde a una mail manuale, il messaggio viene automaticamente allegato alla sua scheda storica con etichetta `📩 [EMAIL RICEVUTA]`.
+- **Estrazione Testo Pulito & Multipart**: Estrazione avanzata del corpo plain-text anche da email multipart/HTML, eliminando quote e firme automatiche.
+- **Deduplicazione Sicura `[MSGID:...]`**: Ogni email memorizza internamente il Message-ID per evitare duplicazioni nei controlli successivi. Il tag tecnico viene mascherato nell'interfaccia utente per mantenere le note pulite.
 
-### 2.3 Eliminazione Sfarfallio UI (Silent Background Polling)
-- I controlli di background eseguiti ogni 30 secondi per verificare nuovi appuntamenti e notifiche non mostrano più spinner bloccanti (`isInitial = false`), garantendo una navigazione fluida e senza flickering.
-- Ottimizzazione caricamento report con endpoint dedicato `GET /api/history`.
+### 2.3 Compatibilità SQL MariaDB (Keyword Escaping)
+- **Risoluzione Parola Riservata `` `key` ``**: Tutte le query che interagiscono con la tabella `settings` utilizzano i backtick di protezione per la colonna `` `key` ``, garantendo la compatibilità totale con i vincoli sintattici di MariaDB su Hostinger.
 
-### 2.4 Feedback Visivo e Trasparenza Gestione Team / Credenziali
-- **Conferma Password Visibile**: Quando l'amministratore imposta o reimposta la password di un utente, viene mostrato un banner verde di successo contenente la password salvata in chiaro (in evidenza con font monospaziato), eliminando ogni ambiguità sul salvataggio.
-- **Toggle Visibilità Password**: Aggiunta icona ad occhio (`Eye` / `EyeOff`) per visualizzare o mascherare la password durante la digitazione.
-- **Feedback Immediato Modifica Email e Ruolo**: Banner e badge animati per confermare istantaneamente l'avvenuto aggiornamento di email e ruolo senza ricaricare la pagina o mostrare alert invasivi.
-- **Password Iniziale in Creazione Profilo**: Possibilità di impostare direttamente la password iniziale durante la creazione di un nuovo operatore.
-
-### 2.5 Lead Generation B2B con Google Maps (Apify Scraper) & Target Count Garantito
-- **Sostituzione Completa Apollo con Apify**: Rimossi tutti i vecchi riferimenti ad Apollo dalle impostazioni server/SMTP. Il token API è ora salvato come `apify_token`.
-- **Target Count Qualificato Garantito**: Se l'utente richiede ad esempio *25 Lead Verificati*, il sistema garantisce l'importazione di esattamente 25 contatti con **SIA Email SIA Telefono validi**.
-- **Buffer di Scansione Intelligente (3.5x - 4x) & Multi-Round Automatico**: Poiché mediamente solo il 25-35% delle schede Maps possiede contatti completi estratti dal sito web, lo scraper parte con un campionamento maggiorato e avvia round di recupero automatici fino a raggiungere l'esatta quota di lead richiesti.
-- **Trasparenza Dati Estratti**: Estrazione reale dei dati aziendali (Ragione Sociale, Telefono, Indirizzo e Sito Web) con arricchimento referenti (Titolari, CEO, Amministratori) ove presenti pubblicamente, evitando contatti incompleti.
+### 2.4 Lead Generation B2B con Google Maps (Apify Scraper)
+- **Token API Organizzazione**: Integrazione centralizzata con token organizzazione Apify con toggle occhio per visualizzazione sicura.
+- **Target Count Garantito (Multi-Round Auto-Espansione)**: Garanzia di estrazione dell'esatto numero di contatti completi (SIA email SIA telefono validi) con buffer di campionamento 3.5x-4x.
 
 ---
 
-## 3. Guida alla Configurazione di Google Calendar OAuth
+## 3. Schema Database (18 Tabelle)
 
-Per replicare o riconfigurare l'integrazione Google Calendar:
-
-1. **Google Cloud Console** ([console.cloud.google.com](https://console.cloud.google.com)):
-   - Creare un nuovo progetto (es. `SolarBrand Flow`).
-   - Abilitare la **Google Calendar API**.
-2. **Schermata Consenso OAuth**:
-   - Tipo utente: **Esterno**.
-   - Nome App: `SolarBrand Flow`.
-   - Email assistenza e sviluppatore: email aziendale.
-   - Ambiti (Scopes): aggiungere `https://www.googleapis.com/auth/calendar.events`.
-   - Homepage e Privacy URL: `https://solarbrandkg.it`.
-3. **Credenziali (OAuth Client ID)**:
-   - Tipo applicazione: **Applicazione Web**.
-   - URI di reindirizzamento autorizzati:
-     - `https://crm.solarbrandkg.it/api/auth/google/callback`
-     - `http://localhost:3000/api/auth/google/callback` (per sviluppo locale)
-4. **Configurazione su Hostinger**:
-   - Inserire nelle *Variabili d'ambiente* dell'applicazione:
-     ```env
-     GOOGLE_CLIENT_ID=549446315818-cuk21asmn7oii38n16dhlib94961q8hl.apps.googleusercontent.com
-     GOOGLE_CLIENT_SECRET=GOCSPX-PJf...[Configurato in Hostinger]
-     GOOGLE_REDIRECT_URI=https://crm.solarbrandkg.it/api/auth/google/callback
-     ```
-   - Riavviare l'applicazione Node.js.
-
----
-
-## 4. Architettura Tecnologica & Database
-
-### 4.1 Schema Database (18 Tabelle)
 1. `leads`: Anagrafica lead/clienti con `address`, `colleagueId`, stato preventivo e note.
 2. `colleagues`: Operatori ed agenti con ruolo (`telefonista` | `venditore` | `admin`), `email`, `passwordHash`, rating stelline e `googleTokens`.
 3. `sessions`: Token di sessione crittografici (scadenza 30 giorni) verificati dal middleware API.
 4. `appointments`: Appuntamenti fissati con distinzione `appointmentType` (`call` | `visit`) e agente assegnato.
 5. `visit_reports`: Schede sopralluogo compilate dagli agenti.
-6. `history`: Storico eventi, chiamate, note, preventivi e variazioni di stato.
+6. `history`: Storico eventi, chiamate, note, preventivi, aperture/click email e messaggi ricevuti.
 7. `services`: Servizi aziendali offerti.
 8. `tasks`: Task e promemoria interni collegati ai lead.
-9. `smtp_accounts`: Credenziali SMTP aziendali condivise per l'invio email.
-10. `imap_accounts`: Configurazione caselle IMAP per il monitoraggio automatico delle risposte lead.
-11. `email_templates`: Template email con corpo HTML.
+9. `smtp_accounts`: Credenziali SMTP aziendali condivise (`smtp.hostinger.com:587`).
+10. `imap_accounts`: Configurazione caselle IMAP per monitoraggio risposte e inbox scanner (`imap.hostinger.com:993`).
+11. `email_templates`: Template email con segnaposto dinamici (`{nome}`, `{azienda}`, ecc.).
 12. `sms_templates`: Modelli di testo per SMS.
-13. `settings`: Configurazioni di sistema e flag (chiave → valore).
+13. `settings`: Configurazioni di sistema e flag (chiave → valore con colonna protetta `` `key` ``).
 14. `reviews`: Recensioni dei clienti con token monouso univoco.
 15. `lead_attachments`: Registro dei file caricati e collegati ai singoli lead.
-16. `email_campaigns`: Campagne di email marketing massive.
+16. `email_campaigns`: Campagne di email marketing massive con contatori (inviati, aperti, cliccati, risposte).
 17. `email_campaign_recipients`: Destinatari campagne con tracking aperture, click e risposte.
 18. `oauth_states`: Gestione stati temporanei handshake OAuth Google.
 
 ---
 
-## 5. Configurazione Produzione Hostinger (Attiva)
+## 4. Configurazione Produzione Hostinger (Attiva)
 
 - **URL Pubblico**: `https://crm.solarbrandkg.it/`
 - **Repository**: `PeraDev7/Solarbrand-gestionale` (Branch: `main`)
 - **Framework**: Express (Node.js 22.x) + Vite React 19 Frontend
-- **Database MySQL**: Hostinger MySQL (`u437201618_solarbrand` @ `localhost:3306`)
-- **Variabili d'ambiente in produzione**:
+- **Database**: Hostinger MariaDB/MySQL (`u437201618_solarbrand` @ `localhost:3306`)
+- **Variabili d'ambiente configurate**:
   ```env
   DB_TYPE=mysql
   DB_HOST=localhost
@@ -143,4 +112,3 @@ Per replicare o riconfigurare l'integrazione Google Calendar:
   GOOGLE_CLIENT_SECRET=GOCSPX-PJf...[Configurato in Hostinger]
   GOOGLE_REDIRECT_URI=https://crm.solarbrandkg.it/api/auth/google/callback
   ```
-- **CI/CD**: Build automatica ed esecuzione ad ogni aggiornamento su branch `main`.
