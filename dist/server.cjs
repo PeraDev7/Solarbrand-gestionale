@@ -26654,12 +26654,30 @@ async function runImapCheck(account) {
         const now = (/* @__PURE__ */ new Date()).toISOString();
         let replyText = `Risposta ricevuta da ${msg.envelope?.from?.[0]?.address || recipient.email}`;
         try {
-          const fullMsg = await client.fetchOne(String(msg.seq), { bodyParts: ["TEXT"], bodyStructure: true });
-          if (fullMsg?.bodyParts) {
-            const textPart = fullMsg.bodyParts.get("TEXT");
-            if (textPart) {
-              replyText = Buffer.from(textPart).toString("utf8").slice(0, 2e3);
+          const fullMsg = await client.fetchOne(String(msg.seq), { source: true });
+          if (fullMsg?.source) {
+            const raw = fullMsg.source.toString("utf8");
+            const sepIdx = raw.indexOf("\r\n\r\n") !== -1 ? raw.indexOf("\r\n\r\n") + 4 : raw.indexOf("\n\n") + 2;
+            let body = sepIdx > 2 ? raw.slice(sepIdx) : "";
+            const boundaryMatch = raw.match(/boundary="?([^"\r\n;]+)"?/i);
+            if (boundaryMatch) {
+              const boundary = boundaryMatch[1].trim();
+              const parts = body.split("--" + boundary);
+              for (const part of parts) {
+                if (/content-type:\s*text\/plain/i.test(part)) {
+                  const pSep = part.indexOf("\r\n\r\n") !== -1 ? part.indexOf("\r\n\r\n") + 4 : part.indexOf("\n\n") + 2;
+                  if (pSep > 2) {
+                    body = part.slice(pSep);
+                    break;
+                  }
+                }
+              }
             }
+            const lines = body.split("\n");
+            const cleaned = lines.filter((l) => !l.trim().startsWith(">")).join("\n");
+            const sigIdx = cleaned.search(/\n--\s*\n|\n-- \n/);
+            const finalText = (sigIdx !== -1 ? cleaned.slice(0, sigIdx) : cleaned).trim();
+            if (finalText.length > 0) replyText = finalText.slice(0, 2e3);
           }
         } catch (bodyErr) {
         }
