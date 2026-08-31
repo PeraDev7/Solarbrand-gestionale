@@ -2004,27 +2004,26 @@ async function runImapCheck(account: any): Promise<{ repliesFound: number; inbox
     await client.connect();
     const lock = await client.getMailboxLock('INBOX');
     try {
-      // Only fetch messages since the last check (or last 7 days if first run)
+      // Cutoff: solo messaggi dopo l'ultimo check (o ultimi 7 giorni se primo avvio)
       const sinceDate = account.lastChecked
         ? new Date(account.lastChecked)
         : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-      // Search for new message UIDs since lastChecked
-      let uids: number[] = [];
-      try {
-        uids = await client.search({ since: sinceDate }, { uid: true });
-      } catch (_) {
-        // Fallback: fetch all if search not supported
-        uids = await client.search({ all: true }, { uid: true });
-      }
-
-      if (uids.length === 0) {
-        return { repliesFound: 0, inboxMatches: 0 };
-      }
-
+      // Fetch tutti i messaggi con solo headers (leggero) e filtra per data lato JS
+      // — più compatibile di client.search() con UID su server Hostinger IMAP
       const messages: any[] = [];
-      for await (const msg of client.fetch(uids, { envelope: true, source: { headersOnly: true } }, { uid: true })) {
-        messages.push(msg);
+      for await (const msg of client.fetch('1:*', {
+        envelope: true,
+        source: { headersOnly: true },
+      })) {
+        const msgDate = msg.envelope?.date ? new Date(msg.envelope.date) : null;
+        if (!msgDate || msgDate >= sinceDate) {
+          messages.push(msg);
+        }
+      }
+
+      if (messages.length === 0) {
+        return { repliesFound: 0, inboxMatches: 0 };
       }
 
       // ── PART 1: Campaign reply detection ──

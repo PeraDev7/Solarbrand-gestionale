@@ -26650,18 +26650,18 @@ async function runImapCheck(account) {
     const lock = await client.getMailboxLock("INBOX");
     try {
       const sinceDate = account.lastChecked ? new Date(account.lastChecked) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
-      let uids = [];
-      try {
-        uids = await client.search({ since: sinceDate }, { uid: true });
-      } catch (_) {
-        uids = await client.search({ all: true }, { uid: true });
-      }
-      if (uids.length === 0) {
-        return { repliesFound: 0, inboxMatches: 0 };
-      }
       const messages = [];
-      for await (const msg of client.fetch(uids, { envelope: true, source: { headersOnly: true } }, { uid: true })) {
-        messages.push(msg);
+      for await (const msg of client.fetch("1:*", {
+        envelope: true,
+        source: { headersOnly: true }
+      })) {
+        const msgDate = msg.envelope?.date ? new Date(msg.envelope.date) : null;
+        if (!msgDate || msgDate >= sinceDate) {
+          messages.push(msg);
+        }
+      }
+      if (messages.length === 0) {
+        return { repliesFound: 0, inboxMatches: 0 };
       }
       const sentRecipients = await db.all(
         "SELECT * FROM email_campaign_recipients WHERE status = 'sent' AND messageId != '' AND repliedAt = ''",
