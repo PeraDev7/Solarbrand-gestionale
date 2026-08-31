@@ -649,7 +649,7 @@ function ApifyGoogleMapsTab({ onClose }: { onClose: () => void }) {
 
         <ol className="list-decimal list-inside space-y-1 text-emerald-900 font-medium leading-relaxed pl-1">
           <li>Accedi al tuo account su <strong>Apify.com</strong>.</li>
-          <li>Vai su <strong>Settings ➔ API & Integrations ➔ API Tokens</strong> e copia il tuo <strong>Organization API Token</strong> (oppure il <strong>Personal API Token</strong>).</li>
+          <li>Vai su <strong>Settings ➔ API &amp; Integrations ➔ API Tokens</strong> e copia il tuo <strong>Organization API Token</strong> (quello dell'organizzazione, NON il Personal).</li>
           <li>Incolla il token nel riquadro sottostante e clicca su <strong>Salva Token</strong>. Verrà memorizzato in modo sicuro per tutti i futuri utilizzi!</li>
         </ol>
       </div>
@@ -666,6 +666,8 @@ function ApifyGoogleMapsTab({ onClose }: { onClose: () => void }) {
             <Key className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
             <input
               type={showToken ? "text" : "password"}
+              autoComplete="off"
+              name="apify-organization-token"
               placeholder="Incolla qui il tuo token Apify (es. apify_api_xxxx...)"
               value={apifyToken}
               onChange={e => { setApifyToken(e.target.value); setIsTokenSaved(false); }}
