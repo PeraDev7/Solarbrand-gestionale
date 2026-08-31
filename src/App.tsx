@@ -354,6 +354,8 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
                   </span>
                   <input
                     type="text"
+                    autoComplete="off"
+                    name="lead-search-query"
                     placeholder="Cerca per nome, telefono, azienda o email..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
