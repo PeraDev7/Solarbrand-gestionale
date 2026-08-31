@@ -479,11 +479,11 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
 
                             <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${
-                                lead.status === 'Nuovo' ? 'bg-slate-50 text-slate-700 border-slate-200' :
-                                lead.status === 'Chiamato - Nessuna Risposta' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                                lead.status === 'Da richiamare' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                lead.status === 'Interessato' ? 'bg-green-50 text-green-700 border-green-200 font-black' :
-                                lead.status === 'Non interessato' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                lead.status?.toLowerCase() === 'nuovo' ? 'bg-slate-50 text-slate-700 border-slate-200' :
+                                lead.status?.toLowerCase() === 'chiamato - nessuna risposta' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                lead.status?.toLowerCase() === 'da richiamare' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                lead.status?.toLowerCase() === 'interessato' ? 'bg-green-50 text-green-700 border-green-200 font-black' :
+                                lead.status?.toLowerCase() === 'non interessato' ? 'bg-rose-50 text-rose-700 border-rose-200' :
                                 'bg-emerald-50 text-emerald-800 border-emerald-300'
                               }`}>
                                 {lead.status}
@@ -591,12 +591,12 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
                                 </td>
                                 <td className="px-6 py-4.5">
                                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border
-                                    ${lead.status === 'Nuovo' ? 'bg-slate-50 text-slate-700 border-slate-200' : ''}
-                                    ${lead.status === 'Chiamato - Nessuna Risposta' ? 'bg-orange-50 text-orange-700 border-orange-200' : ''}
-                                    ${lead.status === 'Da richiamare' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
-                                    ${lead.status === 'Interessato' ? 'bg-green-50 text-green-700 border-green-200 font-bold' : ''}
-                                    ${lead.status === 'Non interessato' ? 'bg-rose-50 text-rose-700 border-rose-200' : ''}
-                                    ${lead.status === 'Chiuso con successo' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : ''}
+                                    ${lead.status?.toLowerCase() === 'nuovo' ? 'bg-slate-50 text-slate-700 border-slate-200' : ''}
+                                    ${lead.status?.toLowerCase() === 'chiamato - nessuna risposta' ? 'bg-orange-50 text-orange-700 border-orange-200' : ''}
+                                    ${lead.status?.toLowerCase() === 'da richiamare' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
+                                    ${lead.status?.toLowerCase() === 'interessato' ? 'bg-green-50 text-green-700 border-green-200 font-bold' : ''}
+                                    ${lead.status?.toLowerCase() === 'non interessato' ? 'bg-rose-50 text-rose-700 border-rose-200' : ''}
+                                    ${lead.status?.toLowerCase() === 'chiuso con successo' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : ''}
                                   `}>
                                     {lead.status}
                                   </span>
