@@ -3,7 +3,7 @@
 > 🟢 **STATO SISTEMA: ONLINE E ATTIVO SU HOSTINGER**  
 > **URL PUBBLICO**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **REPOSITORY GITHUB (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **VERSIONE ATTUALE**: 3.7 (Tracking Email Live + Inbox Scanner IMAP + MariaDB Escaped)
+> **VERSIONE ATTUALE**: 3.8 (IMAP Universale + Anti-Autofill Globale + Scraper Maps Validato)
 
 ---
 
@@ -43,18 +43,32 @@ Tutti gli account preesistenti hanno come password iniziale: **`SolarBrand2026!`
 ## 📧 CONFIGURAZIONE EMAIL, TRACKING & INBOX SCANNER
 
 ### 📤 SMTP Aziendale (Invio Campagne & Notifiche)
-- **Host**: `smtp.hostinger.com` | **Porta**: `587` | **Email**: `info@solarbrandkg.it`
+- **Account Principale**: `SolarBrand KG`
+- **Host**: Configurato da interfaccia gestionale (es. `dms01.vhosting-it.net:465` o `smtp.hostinger.com:587`)
+- **Email Mittente**: `info@solarbrandkg.it`
 - **URL Pubblico Tracking**: `https://crm.solarbrandkg.it` (impostato automaticamente in `settings`)
 - **Pixel Aperture**: GIF 1x1 trasparente (`/api/email-track/open?eid=...`)
 - **Click Tracking**: Redirect 302 (`/api/email-track/click?eid=...&url=...`)
 
 ### 📥 IMAP Aziendale & Inbox Scanner (Lettura Risposte & Email)
 - **Host**: `imap.hostinger.com` | **Porta**: `993` (SSL) | **Email**: `info@solarbrandkg.it`
+- **Algoritmo Scansione**: Compatibile al 100% con Hostinger (`fetch 1:*` e filtro temporale in JS, senza query UID bloccanti).
 - **Polling Automatico**: Eseguito in background ogni 10 minuti dal server.
 - **Funzionalità**:
   1. **Risposte a Campagne**: Riconosce `In-Reply-To` / `References` e aggiorna le metriche della campagna.
   2. **Inbox Scanner per Lead**: Se un mittente corrisponde a un'email di un lead in anagrafica, aggiunge automaticamente una nota `📩 [EMAIL RICEVUTA]` con testo ed oggetto nella scheda del cliente.
   3. **Pulsante "Controlla ora"**: Forzatura manuale istantanea con feedback completo su risposte ed email abbinate.
+
+---
+
+## 🗺️ LEAD GENERATION GOOGLE MAPS (APIFY)
+
+- **Tipo Token**: **Organization API Token** (Organizzazione `Iride Suite Organization`).
+- **Comportamento Scraper**: 
+  - Scansiona circa 3.5x-4x attività rispetto al target richiesto.
+  - Visita i siti web aziendali per estrarre sia **Email** che **Telefono** validati.
+  - Esclude automaticamente i contatti già presenti nel CRM (anti-duplicati).
+  - Tempo medio di esecuzione: tra 1 e 2 minuti sui server Apify.
 
 ---
 

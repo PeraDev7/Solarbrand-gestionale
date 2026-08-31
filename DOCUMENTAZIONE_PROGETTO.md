@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 3.7 (Tracking Email End-to-End + Inbox Scanner IMAP Automatico + Compatibilità MariaDB Key + Dual-Engine)  
+> **Versione**: 3.8 (Robustezza IMAP Hostinger + Anti-Autofill Globale + Scraper Maps Arricchito + Tracking Email)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
@@ -45,27 +45,23 @@ L'applicazione supporta il flusso operativo aziendale completo con due portali d
 
 ---
 
-## 2. Funzionalità Avanzate & Aggiornamenti Recenti (v3.7)
+## 2. Funzionalità Avanzate & Aggiornamenti Recenti (v3.8)
 
-### 2.1 Tracking Email End-to-End & Monitoraggio Campagne
-- **Verificato e Attivo Live**: Il sistema di tracking (`/api/email-track/open` e `/api/email-track/click`) è collaudato con successo sul dominio `https://crm.solarbrandkg.it`.
-- **Pixel di Tracciamento**: GIF trasparente 1x1 iniettata automaticamente nel body delle email con timestamp preciso di apertura.
-- **Riscrizione Link Click-Tracking**: Ogni link contenuto nei template viene convertito in URL tracciato che registra il click e redireziona istantaneamente all'URL di destinazione.
+### 2.1 Connettore IMAP Universale & Risoluzione `Command failed`
+- **Scansione Compatibile con Hostinger**: Sostituito l'uso di `client.search({ since })` con UID con `client.fetch('1:*')` filtrato per data in JavaScript. Questo garantisce compatibilità al 100% con qualsiasi server IMAP (inclusi Hostinger, cPanel e Gmail).
+- **Inbox Scanner Automatico**: Cattura sia le risposte alle campagne (`In-Reply-To`) sia le email spontanee inviate dai clienti censiti, allegandole allo storico del lead con protezione anti-duplicati (`[MSGID:...]` nascosto da UI).
 
-### 2.2 Inbox Scanner IMAP & Riconoscimento Automatico Risposte
-- **Scanner Intelligente per Mittente**: Ad ogni ciclo di polling (ogni 10 minuti o manuale tramite pulsante *"Controlla ora"*), il server analizza la casella IMAP (`imap.hostinger.com:993`).
-- **Doppio Canale di Riconoscimento**:
-  1. **Risposte Campagne (`In-Reply-To`)**: aggiorna i contatori della campagna e segna il lead come *Ha risposto*.
-  2. **Email Spontanee da Lead Anagrafica**: se un lead già censito nel gestionale invia un'email di sua iniziativa o risponde a una mail manuale, il messaggio viene automaticamente allegato alla sua scheda storica con etichetta `📩 [EMAIL RICEVUTA]`.
-- **Estrazione Testo Pulito & Multipart**: Estrazione avanzata del corpo plain-text anche da email multipart/HTML, eliminando quote e firme automatiche.
-- **Deduplicazione Sicura `[MSGID:...]`**: Ogni email memorizza internamente il Message-ID per evitare duplicazioni nei controlli successivi. Il tag tecnico viene mascherato nell'interfaccia utente per mantenere le note pulite.
+### 2.2 Protezione Globale Anti-Autofill del Browser
+- **Barra di Ricerca Lead**: Aggiunto `autoComplete="off"` e identificatore univoco `name="lead-search-query"` per impedire al browser di iniettare credenziali di login (es. `erika@solarbrand.it`) nel campo di ricerca.
+- **Campo Token Apify**: Protetto con `autoComplete="off"` per evitare che i gestori password sovrascrivano il token API con le password salvate del CRM.
 
-### 2.3 Compatibilità SQL MariaDB (Keyword Escaping)
-- **Risoluzione Parola Riservata `` `key` ``**: Tutte le query che interagiscono con la tabella `settings` utilizzano i backtick di protezione per la colonna `` `key` ``, garantendo la compatibilità totale con i vincoli sintattici di MariaDB su Hostinger.
+### 2.3 Lead Generation Google Maps (Apify Scraper) & Precisione Territoriale
+- **Token API Organizzazione**: Integrazione diretta con Organization API Token (`Iride Suite Organization`).
+- **Verifica Territoriale Reale**: Lo scraper estrae indirizzo completo, CAP e prefisso telefonico (es. `045` per Verona centro/lago e `0442` per Legnago/Bassa Veronese).
+- **Arricchimento Contatti e Anti-Duplicati**: Navigazione automatizzata dei siti web aziendali per estrarre sia email che telefono verificati, con scarto automatico dei contatti già presenti in rubrica.
 
-### 2.4 Lead Generation B2B con Google Maps (Apify Scraper)
-- **Token API Organizzazione**: Integrazione centralizzata con token organizzazione Apify con toggle occhio per visualizzazione sicura.
-- **Target Count Garantito (Multi-Round Auto-Espansione)**: Garanzia di estrazione dell'esatto numero di contatti completi (SIA email SIA telefono validi) con buffer di campionamento 3.5x-4x.
+### 2.4 Uniformità Visiva Badge di Stato
+- **Confronto Case-Insensitive**: Il rendering dei badge di stato (es. *Nuovo*, *Chiamato*, *Interessato*) gestisce in modo trasparente variazioni di maiuscole/minuscole nel database (`nuovo` / `Nuovo`).
 
 ---
 
@@ -79,7 +75,7 @@ L'applicazione supporta il flusso operativo aziendale completo con due portali d
 6. `history`: Storico eventi, chiamate, note, preventivi, aperture/click email e messaggi ricevuti.
 7. `services`: Servizi aziendali offerti.
 8. `tasks`: Task e promemoria interni collegati ai lead.
-9. `smtp_accounts`: Credenziali SMTP aziendali condivise (`smtp.hostinger.com:587`).
+9. `smtp_accounts`: Credenziali SMTP aziendali condivise (`smtp.hostinger.com:587` o server dedicati).
 10. `imap_accounts`: Configurazione caselle IMAP per monitoraggio risposte e inbox scanner (`imap.hostinger.com:993`).
 11. `email_templates`: Template email con segnaposto dinamici (`{nome}`, `{azienda}`, ecc.).
 12. `sms_templates`: Modelli di testo per SMS.
