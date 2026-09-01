@@ -14,6 +14,7 @@ interface LeadDetailProps {
   activeColleague: string;
   colleagues: string[];
   googleToken: string | null;
+  sessionRole: 'telefonista' | 'venditore' | 'admin';
   onClose: () => void;
   onUpdateLead: (updatedLead: Lead) => void;
   onDeleteLead?: (deletedId: string) => void;
@@ -25,6 +26,7 @@ export default function LeadDetail({
   activeColleague, 
   colleagues, 
   googleToken, 
+  sessionRole,
   onClose, 
   onUpdateLead,
   onDeleteLead,
@@ -314,7 +316,7 @@ export default function LeadDetail({
           Chiama
         </a>
 
-        {lead.phone ? (
+        {sessionRole !== 'telefonista' && (lead.phone ? (
           <div className="relative">
             <button
               onClick={() => setShowSmsDropdown(!showSmsDropdown)}
@@ -348,7 +350,7 @@ export default function LeadDetail({
           <button disabled className="opacity-50 cursor-not-allowed flex items-center justify-center gap-2 bg-slate-50 text-slate-400 py-2.5 px-3 rounded-xl text-xs font-bold">
             <MessageSquare className="w-4 h-4" /> SMS
           </button>
-        )}
+        ))}
       </div>
 
       {/* Internal Navigation Tabs */}

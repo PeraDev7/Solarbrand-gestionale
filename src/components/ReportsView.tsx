@@ -192,7 +192,7 @@ export default function ReportsView({ leads, colleagues, services }: ReportsView
     doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(...BRAND_SLATE_MID);
     const filterDesc = [
       selectedColleagues.length > 0 ? `Operatore/Agente: ${selectedColleagues.join(', ')}` : 'Tutti gli operatori ed agenti',
-      selectedServices.length > 0 ? `Servizi: ${selectedServices.join(', ')}` : 'Tutti i servizi'
+      selectedServices.length > 0 ? `Tipologie: ${selectedServices.join(', ')}` : 'Tutte le tipologie'
     ].join('   •   ');
     doc.text(filterDesc, margin + 6, 82);
     doc.text(`Generato il: ${genStr}`, margin + 6, 89);
@@ -396,7 +396,7 @@ export default function ReportsView({ leads, colleagues, services }: ReportsView
           <button
             onClick={exportToPDF}
             disabled={filteredHistory.length === 0}
-            title="Genera PDF professionale con copertina, KPI, riepilogo per operatore e servizio, e dettaglio completo"
+            title="Genera PDF professionale con copertina, KPI, riepilogo per operatore e tipologia, e dettaglio completo"
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer ${
               filteredHistory.length === 0
                 ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
@@ -511,7 +511,7 @@ export default function ReportsView({ leads, colleagues, services }: ReportsView
 
 
         <div>
-          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Filtra per Servizio</label>
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Filtra per Tipologia</label>
           <div className="flex flex-wrap gap-1.5">
             {services.map(srv => {
               const isSelected = selectedServices.includes(srv);
@@ -541,7 +541,7 @@ export default function ReportsView({ leads, colleagues, services }: ReportsView
                 <th className="p-3">Data e Ora</th>
                 <th className="p-3">Operatore</th>
                 <th className="p-3">Lead / Contatto</th>
-                <th className="p-3">Servizi</th>
+                <th className="p-3">Tipologie</th>
                 <th className="p-3">Stato Assegnato</th>
                 <th className="p-3">Note / Esito</th>
               </tr>

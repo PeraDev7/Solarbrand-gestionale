@@ -198,51 +198,54 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
               </button>
             )}
 
-            {/* Email Templates Button */}
-            <button
-              onClick={() => setShowEmailTemplateManager(true)}
-              className="bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 p-2 rounded-xl transition-all cursor-pointer"
-              title="Template Email"
-            >
-              <Mail className="w-4 h-4" />
-            </button>
-            
-            {/* SMS Templates Button */}
-            <button
-              onClick={() => setShowSmsTemplateManager(true)}
-              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 p-2 rounded-xl transition-all cursor-pointer"
-              title="Template SMS"
-            >
-              <MessageSquare className="w-4 h-4" />
-            </button>
+            {/* Pulsanti riservati agli ADMIN */}
+            {session.role === 'admin' && (<>
+              {/* Email Templates Button */}
+              <button
+                onClick={() => setShowEmailTemplateManager(true)}
+                className="bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 p-2 rounded-xl transition-all cursor-pointer"
+                title="Template Email"
+              >
+                <Mail className="w-4 h-4" />
+              </button>
 
-            {/* SMTP Settings Button */}
-            <button
-              onClick={() => setShowSmtpSettings(true)}
-              className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 p-2 rounded-xl transition-all cursor-pointer"
-              title="Impostazioni Server & Keys"
-            >
-              <Server className="w-4 h-4" />
-            </button>
+              {/* SMS Templates Button */}
+              <button
+                onClick={() => setShowSmsTemplateManager(true)}
+                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 p-2 rounded-xl transition-all cursor-pointer"
+                title="Template SMS"
+              >
+                <MessageSquare className="w-4 h-4" />
+              </button>
 
-            {/* IMAP Settings Button */}
-            <button
-              onClick={() => setShowImapSettings(true)}
-              className="bg-teal-50 hover:bg-teal-100 text-teal-600 border border-teal-200 p-2 rounded-xl transition-all cursor-pointer"
-              title="Impostazioni IMAP (Lettura Risposte)"
-            >
-              <Mail className="w-4 h-4 rotate-180" />
-            </button>
+              {/* SMTP Settings Button */}
+              <button
+                onClick={() => setShowSmtpSettings(true)}
+                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 p-2 rounded-xl transition-all cursor-pointer"
+                title="Impostazioni Server & Keys"
+              >
+                <Server className="w-4 h-4" />
+              </button>
 
-            {/* Email Campaign Button */}
-            <button
-              onClick={() => setShowEmailCampaigns(true)}
-              className="bg-violet-50 hover:bg-violet-100 text-violet-600 border border-violet-200 px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
-              title="Campagne Email Massive"
-            >
-              <Send className="w-4 h-4" />
-              <span className="hidden sm:inline">Campagne</span>
-            </button>
+              {/* IMAP Settings Button */}
+              <button
+                onClick={() => setShowImapSettings(true)}
+                className="bg-teal-50 hover:bg-teal-100 text-teal-600 border border-teal-200 p-2 rounded-xl transition-all cursor-pointer"
+                title="Impostazioni IMAP (Lettura Risposte)"
+              >
+                <Mail className="w-4 h-4 rotate-180" />
+              </button>
+
+              {/* Email Campaign Button */}
+              <button
+                onClick={() => setShowEmailCampaigns(true)}
+                className="bg-violet-50 hover:bg-violet-100 text-violet-600 border border-violet-200 px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                title="Campagne Email Massive"
+              >
+                <Send className="w-4 h-4" />
+                <span className="hidden sm:inline">Campagne</span>
+              </button>
+            </>)}
 
             {/* Logout Button */}
             <button
@@ -302,7 +305,7 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
             </button>
           </div>
 
-          {currentTab === 'leads' && (
+          {currentTab === 'leads' && session.role === 'admin' && (
             <div className="grid grid-cols-2 md:flex items-center gap-2">
               <button
                 onClick={() => setShowImportModal(true)}
@@ -393,7 +396,7 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
                       onChange={(e) => setServiceFilter(e.target.value)}
                       className="bg-transparent border-none text-xs font-bold text-slate-700 focus:outline-none w-full py-1.5 cursor-pointer"
                     >
-                      <option value="Tutti">Servizio (Tutti)</option>
+                      <option value="Tutti">Tipologia (Tutte)</option>
                       {availableServices.map(s => (
                         <option key={s} value={s}>{s}</option>
                       ))}
@@ -545,7 +548,7 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
                           <tr className="border-b border-slate-100 bg-slate-50/70">
                             <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Contatto Lead</th>
                             <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Telefono / Email</th>
-                            <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Tipo / Servizio</th>
+                            <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Tipologia</th>
                             <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Stato</th>
                             <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Assegnato A</th>
                             <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Azioni</th>
@@ -692,6 +695,7 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
                 activeColleague={activeColleague}
                 colleagues={colleagues}
                 googleToken={googleToken}
+                sessionRole={session.role}
                 onClose={() => setSelectedLead(null)}
                 onUpdateLead={(updated) => {
                   setSelectedLead(updated);

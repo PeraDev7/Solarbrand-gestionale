@@ -146,18 +146,18 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
       await fetchData();
       onUpdate();
     } catch (err: any) {
-      alert(err.message || 'Errore aggiunta servizio');
+      alert(err.message || 'Errore aggiunta tipologia');
     }
   };
 
   const deleteService = async (srv: Service) => {
-    if (!confirm(`Eliminare definitivamente il servizio "${srv.name}"?`)) return;
+    if (!confirm(`Eliminare definitivamente la tipologia "${srv.name}"?`)) return;
     try {
       await api.deleteService(srv.id);
       await fetchData();
       onUpdate();
     } catch (err: any) {
-      alert(err.message || 'Errore eliminazione servizio');
+      alert(err.message || 'Errore eliminazione tipologia');
     }
   };
 
@@ -172,8 +172,8 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
               <Users className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-extrabold text-slate-900">Gestione Team, Servizi & Ruoli Aziendali</h2>
-              <p className="text-xs text-slate-500 font-medium">Configura i servizi trattati, gli operatori ed i ruoli aziendali</p>
+              <h2 className="text-xl font-extrabold text-slate-900">Gestione Team, Tipologie & Ruoli Aziendali</h2>
+              <p className="text-xs text-slate-500 font-medium">Configura le tipologie trattate, gli operatori ed i ruoli aziendali</p>
             </div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
@@ -183,7 +183,7 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
 
         <div className="p-6 overflow-y-auto flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Left Column: Add User & Services */}
+          {/* Left Column: Add User & Tipologie */}
           <div className="space-y-6">
             
             {/* Add User Card */}
@@ -258,17 +258,17 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
               </div>
             </div>
 
-            {/* Services Section */}
+            {/* Tipologie Section */}
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3">
               <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
                 <Briefcase className="w-4 h-4 text-amber-500" />
-                Servizi Trattati dall'Azienda
+                Tipologie Trattate dall'Azienda
               </h3>
 
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Nuovo servizio..."
+                  placeholder="Nuova tipologia..."
                   value={newService}
                   onChange={e => setNewService(e.target.value)}
                   className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
@@ -285,7 +285,7 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
                     <button 
                       onClick={() => deleteService(srv)}
                       className="text-slate-300 hover:text-rose-500 hover:bg-rose-50 p-0.5 rounded-md transition-colors cursor-pointer"
-                      title="Elimina servizio"
+                      title="Elimina tipologia"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>

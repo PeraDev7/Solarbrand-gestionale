@@ -299,7 +299,7 @@ export default function LeadModal({ lead, colleagueObjects, services, activeColl
           )}
 
           <div>
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Servizi di Interesse</label>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Tipologie di Interesse</label>
             <div className="flex flex-wrap gap-2 pt-1">
               {services.map(srv => {
                 const isSelected = selectedServices.includes(srv);
