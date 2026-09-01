@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 3.8 (Robustezza IMAP Hostinger + Anti-Autofill Globale + Scraper Maps Arricchito + Tracking Email)  
+> **Versione**: 3.9 (Doppia Assegnazione Lead Telefonisti Multipli/Agente Singolo + Fix Critico Credenziali Erika)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
@@ -14,12 +14,15 @@
 
 L'applicazione supporta il flusso operativo aziendale completo con due portali distinti:
 
-### 1.1 Portale Ufficio / Call Center (es. Erika, Laura, Luciana)
-- **Qualifica e Chiamate**: Presenta i prodotti al telefono e qualifica i contatti. Tutti i telefonisti possono vedere l'intero database lead per lavorare liberamente le liste di chiamata.
-- **Assegnazione Diretta Lead & Filtri Agente**:
-  - Menu a tendina filtri nella tab *Gestione Lead* per filtrare per Telefonista assegnato, Agente commerciale, oppure *⚠️ Non Assegnati*.
-  - Riassegnazione immediata 1-click direttamente dall'intestazione della scheda lead.
-  - Assegnazione automatica predefinita durante l'importazione da file Excel/CSV.
+### 1.1 Portale Ufficio / Call Center (Super Admin & Telefonisti)
+- **Qualifica e Chiamate**: Presenta i prodotti al telefono e qualifica i contatti.
+- **Doppia Assegnazione Indipendente Lead (Novità v3.9)**:
+  - **Telefonisti Assegnati (Multipli)**: L'amministratore può assegnare ogni lead a uno o più operatori/telefonisti tramite comodi selettori multi-checkbox (badge viola).
+  - **Agente Commerciale (Singolo)**: Assegnazione dedicata a un solo venditore tramite menu a tendina (badge ambra).
+  - **Regole di Visibilità Telefonisti**: Un telefonista visualizza i lead a lui affidati nominalmente (`assignedTelefonisti`) **oppure** tutti i lead che richiedono uno dei **Servizi** a lui assegnati nella gestione collaboratori (`services`).
+- **Filtri Avanzati Toolbar**:
+  - Menu a tendina separati: `Telefonista (Tutti)` / `⚠️ Senza Telefonista` / Singoli operatori.
+  - Menu a tendina: `Agente (Tutti)` / `⚠️ Senza Agente` / Singoli commerciali.
 - **Campagne Email Marketing & Tracking Completo**:
   - Creazione ed invio massivo email tramite account SMTP aziendale (`info@solarbrandkg.it`).
   - **Pixel Tracking 1x1 Invisibile**: traccia l'esatto momento dell'apertura email.
@@ -45,23 +48,36 @@ L'applicazione supporta il flusso operativo aziendale completo con due portali d
 
 ---
 
-## 2. Funzionalità Avanzate & Aggiornamenti Recenti (v3.8)
+## 2. Funzionalità Avanzate & Aggiornamenti Recenti (v3.9)
 
-### 2.1 Connettore IMAP Universale & Risoluzione `Command failed`
+### 2.1 Doppia Assegnazione Lead (Telefonisti Multipli + Agente Singolo)
+- **Nuovo campo DB `assignedTelefonisti` (JSON Array)**: Memorizza l'elenco dei telefonisti assegnati. `assignedColleague` mantiene l'agente commerciale venditore.
+- **Migrazione Automatica Idempotente (`migrateAssignments()`)**: All'avvio del server, i lead esistenti che avevano un telefonista in `assignedColleague` sono stati migrati automaticamente nel nuovo array JSON, preservando i venditori.
+- **Interfaccia `LeadModal.tsx` Rinnovata**:
+  - Sezione Telefonisti (viola) con toggle-button multi-selezione.
+  - Sezione Agente Commerciale (ambra) con selettore singolo dedicato.
+- **Filtri Separati & Badge Colorati**: Due dropdown indipendenti nella toolbar di ricerca e badge distintivi 📞 e 💼 nella vista tabella e nella scheda dettaglio.
+
+### 2.2 Risoluzione Bug Critico Credenziali Erika & Aggiornamento Login Admin
+- **Causa del problema**: Nel backfill iniziale di `database.ts`, a ogni riavvio del server veniva forzato `email = 'erika@solarbrand.it'`, sovrascrivendo qualsiasi modifica manuale effettuata dall'amministratore.
+- **Fix Implementato**: Rimosso il ripristino forzato. Il server preserva rigorosamente email e password personalizzate.
+- **Nuove Credenziali di Produzione**:
+  - **Email**: `eroikaphoto@gmail.com`
+  - **Password**: `Eroika0987`
+  - **Test Live**: Verificato con esito positivo direttamente su `https://crm.solarbrandkg.it/api/auth/login`.
+
+### 2.3 Connettore IMAP Universale & Risoluzione `Command failed`
 - **Scansione Compatibile con Hostinger**: Sostituito l'uso di `client.search({ since })` con UID con `client.fetch('1:*')` filtrato per data in JavaScript. Questo garantisce compatibilità al 100% con qualsiasi server IMAP (inclusi Hostinger, cPanel e Gmail).
 - **Inbox Scanner Automatico**: Cattura sia le risposte alle campagne (`In-Reply-To`) sia le email spontanee inviate dai clienti censiti, allegandole allo storico del lead con protezione anti-duplicati (`[MSGID:...]` nascosto da UI).
 
-### 2.2 Protezione Globale Anti-Autofill del Browser
+### 2.4 Protezione Globale Anti-Autofill del Browser
 - **Barra di Ricerca Lead**: Aggiunto `autoComplete="off"` e identificatore univoco `name="lead-search-query"` per impedire al browser di iniettare credenziali di login (es. `erika@solarbrand.it`) nel campo di ricerca.
 - **Campo Token Apify**: Protetto con `autoComplete="off"` per evitare che i gestori password sovrascrivano il token API con le password salvate del CRM.
 
-### 2.3 Lead Generation Google Maps (Apify Scraper) & Precisione Territoriale
+### 2.5 Lead Generation Google Maps (Apify Scraper) & Precisione Territoriale
 - **Token API Organizzazione**: Integrazione diretta con Organization API Token (`Iride Suite Organization`).
 - **Verifica Territoriale Reale**: Lo scraper estrae indirizzo completo, CAP e prefisso telefonico (es. `045` per Verona centro/lago e `0442` per Legnago/Bassa Veronese).
-- **Arricchimento Contatti e Anti-Duplicati**: Navigazione automatizzata dei siti web aziendali per estrarre sia email che telefono verificati, con scarto automatico dei contatti già presenti in rubrica.
-
-### 2.4 Uniformità Visiva Badge di Stato
-- **Confronto Case-Insensitive**: Il rendering dei badge di stato (es. *Nuovo*, *Chiamato*, *Interessato*) gestisce in modo trasparente variazioni di maiuscole/minuscole nel database (`nuovo` / `Nuovo`).
+- **Arricchimento Contatti e Anti-Duplicati**: Navigazione automatizzata dei siti web aziendali per estrarre sia email che telefono validati.
 
 ---
 
