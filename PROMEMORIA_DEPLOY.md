@@ -3,7 +3,7 @@
 > 🟢 **STATO SISTEMA: ONLINE E ATTIVO SU HOSTINGER**  
 > **URL PUBBLICO**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **REPOSITORY GITHUB (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **VERSIONE ATTUALE**: 3.8 (IMAP Universale + Anti-Autofill Globale + Scraper Maps Validato)
+> **VERSIONE ATTUALE**: 3.9 (Assegnazione Doppia Lead Telefonisti/Agente + Fix Credenziali Erika)
 
 ---
 
@@ -20,11 +20,11 @@
 | **Accesso phpMyAdmin** | Da Hostinger hPanel ➔ *Banche dati ➔ phpMyAdmin* |
 
 ### 👥 Account Iniziali Gestionale (Produzione)
-Tutti gli account preesistenti hanno come password iniziale: **`SolarBrand2026!`**
+Tutti gli account preesistenti (tranne Erika) hanno come password iniziale: **`SolarBrand2026!`**
 
 | Nome | Ruolo | Email / Login | Password Iniziale | Note |
 |---|---|---|---|---|
-| **Erika** | `admin` | `erika@solarbrand.it` (o `erika`) | `SolarBrand2026!` | 👑 **Super Admin**: Gestione team, reset password, campagne email |
+| **Erika** | `admin` | `eroikaphoto@gmail.com` (o `erika`) | `Eroika0987` | 👑 **Super Admin**: Gestione team, reset password, campagne email |
 | **Laura** | `telefonista` | `laura@solarbrand.it` | `SolarBrand2026!` | Ufficio / Call Center |
 | **Luciana** | `telefonista` | `luciana@solarbrand.it` | `SolarBrand2026!` | Ufficio / Call Center |
 | **Marco Rossi** | `venditore` | `marco.rossi@solarbrand.it` | `SolarBrand2026!` | Agente Commerciale |
