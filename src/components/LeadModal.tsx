@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
-import { Lead } from '../types';
-import { X, User, Phone, Mail, Building, Tag, Check, Award, MapPin } from 'lucide-react';
+import { Lead, Colleague } from '../types';
+import { X, User, Phone, Mail, Building, Tag, Check, Award, MapPin, PhoneCall, Users } from 'lucide-react';
 
 interface LeadModalProps {
   lead?: Lead | null;
-  colleagues: string[];
+  colleagueObjects: Colleague[];   // oggetti completi con name + role
   services: string[];
   activeColleague: string;
   onClose: () => void;
   onSave: () => void;
 }
 
-export default function LeadModal({ lead, colleagues, services, activeColleague, onClose, onSave }: LeadModalProps) {
+export default function LeadModal({ lead, colleagueObjects, services, activeColleague, onClose, onSave }: LeadModalProps) {
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [phone, setPhone] = useState('');
@@ -21,9 +21,14 @@ export default function LeadModal({ lead, colleagues, services, activeColleague,
   const [status, setStatus] = useState<Lead['status']>('Nuovo');
   const [type, setType] = useState<Lead['type']>('Lead');
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [assignedColleague, setAssignedColleague] = useState('');
+  const [assignedColleague, setAssignedColleague] = useState('');       // agente (venditore)
+  const [assignedTelefonisti, setAssignedTelefonisti] = useState<string[]>([]); // telefonisti (multipli)
   const [initialNotes, setInitialNotes] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Separazione per ruolo
+  const telefonisti = colleagueObjects.filter(c => c.role === 'telefonista' || c.role === 'admin');
+  const venditori = colleagueObjects.filter(c => c.role === 'venditore');
 
   useEffect(() => {
     if (lead) {
@@ -36,6 +41,7 @@ export default function LeadModal({ lead, colleagues, services, activeColleague,
       setType(lead.type || 'Lead');
       setSelectedServices(lead.services || (lead.service ? [lead.service] : []));
       setAssignedColleague(lead.assignedColleague || '');
+      setAssignedTelefonisti(lead.assignedTelefonisti || []);
     } else {
       setName('');
       setCompany('');
@@ -45,14 +51,21 @@ export default function LeadModal({ lead, colleagues, services, activeColleague,
       setStatus('Nuovo');
       setType('Lead');
       setSelectedServices([]);
-      setAssignedColleague(activeColleague || '');
+      setAssignedTelefonisti([]);
+      setAssignedColleague('');
       setInitialNotes('');
     }
   }, [lead, activeColleague]);
 
   const toggleService = (srv: string) => {
-    setSelectedServices(prev => 
+    setSelectedServices(prev =>
       prev.includes(srv) ? prev.filter(s => s !== srv) : [...prev, srv]
+    );
+  };
+
+  const toggleTelefonista = (n: string) => {
+    setAssignedTelefonisti(prev =>
+      prev.includes(n) ? prev.filter(x => x !== n) : [...prev, n]
     );
   };
 
@@ -80,7 +93,8 @@ export default function LeadModal({ lead, colleagues, services, activeColleague,
         type,
         service: selectedServices[0] || '',
         services: selectedServices,
-        assignedColleague: assignedColleague || activeColleague,
+        assignedColleague: assignedColleague,
+        assignedTelefonisti: assignedTelefonisti,
         notes: initialNotes.trim(),
         address: address.trim(),
       };
@@ -231,19 +245,58 @@ export default function LeadModal({ lead, colleagues, services, activeColleague,
             </div>
           </div>
 
-          <div>
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Assegna Operatore</label>
-            <select
-              value={assignedColleague}
-              onChange={e => setAssignedColleague(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-            >
-              <option value="">-- Seleziona Operatore --</option>
-              {colleagues.map(c => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
+          {/* ── ASSEGNAZIONE TELEFONISTI (multi-checkbox) ── */}
+          {telefonisti.length > 0 && (
+            <div className="border border-violet-100 rounded-2xl p-4 bg-violet-50/40">
+              <label className="text-xs font-bold text-violet-600 uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                <PhoneCall className="w-3.5 h-3.5" />
+                Telefonisti Assegnati
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {telefonisti.map(c => {
+                  const isChecked = assignedTelefonisti.includes(c.name);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => toggleTelefonista(c.name)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                        isChecked
+                          ? 'bg-violet-600 text-white border-violet-600 shadow-sm'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300 hover:bg-violet-50'
+                      }`}
+                    >
+                      {isChecked && <Check className="w-3 h-3" />}
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+              {assignedTelefonisti.length === 0 && (
+                <p className="text-xs text-violet-400 mt-2 italic">Nessun telefonista assegnato</p>
+              )}
+            </div>
+          )}
+
+          {/* ── AGENTE COMMERCIALE (singolo dropdown) ── */}
+          {venditori.length > 0 && (
+            <div className="border border-amber-100 rounded-2xl p-4 bg-amber-50/40">
+              <label className="text-xs font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                <Users className="w-3.5 h-3.5" />
+                Agente Commerciale
+              </label>
+              <select
+                value={assignedColleague}
+                onChange={e => setAssignedColleague(e.target.value)}
+                className="w-full bg-white border border-amber-200 text-slate-800 text-sm rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-400/20 focus:border-amber-400 transition-all"
+              >
+                <option value="">-- Nessun agente assegnato --</option>
+                {venditori.map(c => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Servizi di Interesse</label>
@@ -313,7 +366,7 @@ export default function LeadModal({ lead, colleagues, services, activeColleague,
             <div className="space-y-2">
               <h3 className="text-xl font-black text-slate-900">Conferma Chiusura Contratto</h3>
               <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                Impostando lo stato su <strong>Chiuso con successo</strong>, verrà inviata un'email automatica al cliente <strong>{name}</strong> con una richiesta di recensione e un voto in stelline per l'agente <strong>{assignedColleague || activeColleague}</strong>.
+                Impostando lo stato su <strong>Chiuso con successo</strong>, verrà inviata un'email automatica al cliente <strong>{name}</strong> con una richiesta di recensione e un voto in stelline per l'agente <strong>{assignedColleague || 'assegnato'}</strong>.
               </p>
               <p className="text-[11px] text-emerald-800 font-bold bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
                 ⭐ Il voto del cliente influirà direttamente sulla media stelline dell'agente!
@@ -332,7 +385,7 @@ export default function LeadModal({ lead, colleagues, services, activeColleague,
                 onClick={executeSave}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 text-xs rounded-xl shadow-md shadow-emerald-600/20 cursor-pointer"
               >
-                Conferma & Invia Recensione
+                Conferma &amp; Invia Recensione
               </button>
             </div>
           </div>

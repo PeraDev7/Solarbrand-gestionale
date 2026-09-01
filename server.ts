@@ -6,7 +6,7 @@ import { createServer as createViteServer } from 'vite';
 import nodemailer from 'nodemailer';
 import { randomBytes } from 'crypto';
 import { google } from 'googleapis';
-import { db, randomUUID, parseJsonField, seedDemoDataIfNeeded, initDb } from './src/lib/database.js';
+import { db, randomUUID, parseJsonField, seedDemoDataIfNeeded, initDb, migrateAssignments } from './src/lib/database.js';
 import { hashPassword, verifyPassword } from './src/lib/passwords.js';
 import { buildSearchStrings, buildLocationQuery, buildActorInput, startApifyRun, parseGoogleMapsItems } from './src/lib/google-maps-scraper.js';
 import { createJob, getJob, updateJob } from './src/lib/scraper-jobs.js';
@@ -88,8 +88,8 @@ async function requireAdmin(req: express.Request, res: express.Response): Promis
   return true;
 }
 
-// Initialize database (MySQL or SQLite) then seed demo data if needed
-(async () => { await initDb(); await seedDemoDataIfNeeded(); })();
+// Initialize database (MySQL or SQLite) then seed demo data if needed, then migrate assignments
+(async () => { await initDb(); await seedDemoDataIfNeeded(); await migrateAssignments(); })();
 
 // Flush WAL into the main .db file and close cleanly on exit, otherwise
 // recent writes (e.g. saved settings) can sit only in app.db-wal and be
@@ -106,11 +106,35 @@ process.on('SIGTERM', shutdownGracefully);
 
 // ── LEADS ──
 app.get('/api/leads', async (req, res) => {
-  const { vendorName } = req.query;
+  const { vendorName, telefonistName } = req.query;
   let query = 'SELECT * FROM leads';
   let params: any[] = [];
 
-  if (vendorName) {
+  if (telefonistName) {
+    // Telefonista: vede lead assegnati direttamente a sé (per nome in JSON) OPPURE per servizio
+    const tName = telefonistName as string;
+    const colleague = await db.get('SELECT services FROM colleagues WHERE name = ?', [tName]) as any;
+    const telServices: string[] = parseJsonField(colleague?.services);
+
+    if (telServices.length > 0) {
+      // Lead con il suo nome in assignedTelefonisti OPPURE con un servizio in services
+      const svcPlaceholders = telServices.map(() => '?').join(',');
+      query = `
+        SELECT * FROM leads
+        WHERE JSON_CONTAINS(assignedTelefonisti, JSON_QUOTE(?))
+           OR service IN (${svcPlaceholders})
+           OR EXISTS (
+             SELECT 1 FROM JSON_TABLE(services, '$[*]' COLUMNS (svc TEXT PATH '$')) jt
+             WHERE jt.svc IN (${svcPlaceholders})
+           )
+      `;
+      params = [tName, ...telServices, ...telServices];
+    } else {
+      query = `SELECT * FROM leads WHERE JSON_CONTAINS(assignedTelefonisti, JSON_QUOTE(?))`;
+      params = [tName];
+    }
+  } else if (vendorName) {
+    // Venditore (agente): vede lead con sopralluogo assegnato a sé o come assignedColleague
     query = `
       SELECT DISTINCT l.* FROM leads l
       LEFT JOIN appointments a ON a.leadId = l.id
@@ -124,13 +148,14 @@ app.get('/api/leads', async (req, res) => {
   const leads = rows.map(r => ({
     ...r,
     services: parseJsonField(r.services),
+    assignedTelefonisti: parseJsonField(r.assignedTelefonisti),
   }));
   res.json(leads);
 });
 
 app.post('/api/leads', async (req, res) => {
   const { name, company='', phone='', email='', status='Nuovo', type='Lead',
-          service='', services=[], assignedColleague='', notes='', address='', source='manual' } = req.body;
+          service='', services=[], assignedColleague='', assignedTelefonisti=[], notes='', address='', source='manual' } = req.body;
 
   if (!name) return res.status(400).json({ error: 'name è obbligatorio' });
 
@@ -138,9 +163,9 @@ app.post('/api/leads', async (req, res) => {
   const now = new Date().toISOString();
 
   await db.run(`
-    INSERT INTO leads (id, name, company, phone, email, status, type, service, services, assignedColleague, notes, address, source, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `, [id, name, company, phone, email ? email.toLowerCase() : '', status, type, service, JSON.stringify(services), assignedColleague, notes, address, source, now, now]);
+    INSERT INTO leads (id, name, company, phone, email, status, type, service, services, assignedColleague, assignedTelefonisti, notes, address, source, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `, [id, name, company, phone, email ? email.toLowerCase() : '', status, type, service, JSON.stringify(services), assignedColleague, JSON.stringify(assignedTelefonisti), notes, address, source, now, now]);
 
   if (notes && notes.trim()) {
     await db.run(`
@@ -151,6 +176,7 @@ app.post('/api/leads', async (req, res) => {
 
   const lead = await db.get('SELECT * FROM leads WHERE id = ?', [id]) as any;
   lead.services = parseJsonField(lead.services);
+  lead.assignedTelefonisti = parseJsonField(lead.assignedTelefonisti);
   res.status(201).json(lead);
 });
 
@@ -208,17 +234,19 @@ app.put('/api/leads/:id', async (req, res) => {
     service = existing.service,
     services,
     assignedColleague = existing.assignedColleague,
+    assignedTelefonisti,
     address = existing.address,
   } = req.body;
 
   const now = new Date().toISOString();
   const servicesJson = JSON.stringify(services !== undefined ? services : parseJsonField(existing.services));
+  const telefonistiJson = JSON.stringify(assignedTelefonisti !== undefined ? assignedTelefonisti : parseJsonField(existing.assignedTelefonisti));
 
   await db.run(`
     UPDATE leads
-    SET name=?, company=?, phone=?, email=?, status=?, type=?, service=?, services=?, assignedColleague=?, address=?, updatedAt=?
+    SET name=?, company=?, phone=?, email=?, status=?, type=?, service=?, services=?, assignedColleague=?, assignedTelefonisti=?, address=?, updatedAt=?
     WHERE id=?
-  `, [name, company, phone, email ? email.toLowerCase() : '', status, type, service, servicesJson, assignedColleague, address, now, id]);
+  `, [name, company, phone, email ? email.toLowerCase() : '', status, type, service, servicesJson, assignedColleague, telefonistiJson, address, now, id]);
 
   // Trigger automatic review email if status changed to 'Chiuso con successo'
   if (status === 'Chiuso con successo' && existing.status !== 'Chiuso con successo' && email) {
@@ -265,6 +293,7 @@ app.put('/api/leads/:id', async (req, res) => {
 
   const updated = await db.get('SELECT * FROM leads WHERE id = ?', [id]) as any;
   updated.services = parseJsonField(updated.services);
+  updated.assignedTelefonisti = parseJsonField(updated.assignedTelefonisti);
   res.json(updated);
 });
 

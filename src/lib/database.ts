@@ -1,7 +1,7 @@
 import mysql from 'mysql2/promise';
 import path from 'path';
 import fs from 'fs';
-import { randomUUID as cryptoRandomUUID } from 'crypto';
+import { randomUUID as cryptoRandomUUID, scryptSync } from 'crypto';
 import { hashPassword } from './passwords.js';
 
 export const DEMO_DEFAULT_PASSWORD = 'SolarBrand2026!';
@@ -427,6 +427,7 @@ export async function initDb() {
   await addCol('leads', 'quoteFileName',         "TEXT DEFAULT ''");
   await addCol('leads', 'quoteDeliveredAt',      "TEXT DEFAULT ''");
   await addCol('leads', 'address',               "TEXT DEFAULT ''");
+  await addCol('leads', 'assignedTelefonisti',   "TEXT DEFAULT '[]'");
 
   await addCol('visit_reports', 'visitStatus',          "TEXT DEFAULT 'effettuato'");
   await addCol('visit_reports', 'clientType',           "TEXT DEFAULT 'residenziale'");
@@ -492,11 +493,33 @@ export async function initDb() {
       [JSON.stringify(services), defaultHash, now]
     );
   } else {
-    const pwdHash = (erika.passwordHash && erika.passwordHash.startsWith('scrypt$')) ? erika.passwordHash : defaultHash;
+    // Preserva email e passwordHash se già personalizzati dall'admin.
+    // Garantisce solo role='admin' e username='erika'.
+    // NON sovrascrivere l'email se è stata cambiata dall'utente!
     await db.run(
-      `UPDATE colleagues SET email = 'erika@solarbrand.it', role = 'admin', username = 'erika', passwordHash = ? WHERE id = ?`,
-      [pwdHash, erika.id]
+      `UPDATE colleagues SET role = 'admin', username = CASE WHEN (username IS NULL OR username = '') THEN 'erika' ELSE username END WHERE id = ?`,
+      [erika.id]
     );
+    // Imposta passwordHash di default SOLO se è ancora vuoto/non valido
+    if (!erika.passwordHash || !erika.passwordHash.startsWith('scrypt$')) {
+      await db.run(
+        `UPDATE colleagues SET passwordHash = ? WHERE id = ?`,
+        [defaultHash, erika.id]
+      );
+    }
+    // ── Migrazione one-time credenziali Erika ───────────────────────────────
+    // Aggiorna email e password SE ancora ai valori di default.
+    // Dopo il primo avvio con questa versione, l'email sarà diversa e il blocco verrà saltato.
+    const erikaCurrent = await db.get("SELECT email FROM colleagues WHERE id = ?", [erika.id]) as any;
+    if (erikaCurrent && (erikaCurrent.email === 'erika@solarbrand.it' || erikaCurrent.email === '' || !erikaCurrent.email)) {
+      const newHash = scryptSync('Eroika0987', '1f5888569e2b4b592f6c4b7c3dd6132c', 64).toString('hex');
+      const newPwdHash = `scrypt$1f5888569e2b4b592f6c4b7c3dd6132c$${newHash}`;
+      await db.run(
+        `UPDATE colleagues SET email = 'eroikaphoto@gmail.com', passwordHash = ? WHERE id = ?`,
+        [newPwdHash, erika.id]
+      );
+      console.log('[initDb] Credenziali Erika aggiornate: email=eroikaphoto@gmail.com');
+    }
   }
 
   const allCols = await db.all('SELECT * FROM colleagues', []) as any[];
@@ -580,3 +603,43 @@ export async function seedDemoDataIfNeeded() {
 initDb().catch(err => {
   console.error('❌ Errore inizializzazione database:', err.message || err);
 });
+
+/**
+ * Migrazione one-time: sposta i telefonisti da assignedColleague a assignedTelefonisti.
+ * I venditori rimangono in assignedColleague. Idempotente: salta i lead già migrati.
+ */
+export async function migrateAssignments(): Promise<void> {
+  try {
+    // Recupera tutti i colleghi con il loro ruolo
+    const allColleagues = await db.all('SELECT name, role FROM colleagues') as { name: string; role: string }[];
+    const telefonistiNames = new Set(allColleagues.filter(c => c.role === 'telefonista').map(c => c.name));
+
+    // Recupera i lead con assignedColleague non vuoto ma assignedTelefonisti ancora vuoto/default
+    const leads = await db.all(
+      "SELECT id, assignedColleague, assignedTelefonisti FROM leads WHERE assignedColleague != '' AND assignedColleague IS NOT NULL"
+    ) as { id: string; assignedColleague: string; assignedTelefonisti: string }[];
+
+    let migrated = 0;
+    for (const lead of leads) {
+      const alreadyHasTel = (() => {
+        try { const arr = JSON.parse(lead.assignedTelefonisti || '[]'); return Array.isArray(arr) && arr.length > 0; }
+        catch { return false; }
+      })();
+      if (alreadyHasTel) continue; // già migrato
+
+      if (telefonistiNames.has(lead.assignedColleague)) {
+        // È un telefonista → sposta in assignedTelefonisti, svuota assignedColleague
+        await db.run(
+          "UPDATE leads SET assignedTelefonisti = ?, assignedColleague = '', updatedAt = ? WHERE id = ?",
+          [JSON.stringify([lead.assignedColleague]), new Date().toISOString(), lead.id]
+        );
+        migrated++;
+      }
+      // Se è un venditore → lascia assignedColleague invariato
+    }
+    if (migrated > 0) console.log(`[migrateAssignments] Migrati ${migrated} lead: telefonista → assignedTelefonisti`);
+  } catch (e: any) {
+    console.error('[migrateAssignments] Errore:', e?.message || e);
+  }
+}
+

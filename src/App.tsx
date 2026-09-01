@@ -136,13 +136,19 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
       ? true 
       : (leadHasServices ? lead.services.includes(serviceFilter) : lead.service === serviceFilter);
 
-    const matchesColleague = colleagueFilter === 'Tutti'
+    const matchesTelefonist = telefonistFilter === 'Tutti'
       ? true
-      : colleagueFilter === '__unassigned__'
-        ? (!lead.assignedColleague || lead.assignedColleague.trim() === '' || lead.assignedColleague === 'Nessuno' || lead.assignedColleague === 'Non assegnato')
-        : lead.assignedColleague === colleagueFilter;
+      : telefonistFilter === '__unassigned__'
+        ? (!lead.assignedTelefonisti || lead.assignedTelefonisti.length === 0)
+        : (lead.assignedTelefonisti || []).includes(telefonistFilter);
 
-    return matchesSearch && matchesStatus && matchesType && matchesService && matchesColleague;
+    const matchesAgente = agenteFilter === 'Tutti'
+      ? true
+      : agenteFilter === '__unassigned__'
+        ? (!lead.assignedColleague || lead.assignedColleague.trim() === '' || lead.assignedColleague === 'Nessuno' || lead.assignedColleague === 'Non assegnato')
+        : lead.assignedColleague === agenteFilter;
+
+    return matchesSearch && matchesStatus && matchesType && matchesService && matchesTelefonist && matchesAgente;
   });
 
   const handleSelectLeadById = (id: string) => {
@@ -393,26 +399,35 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
                     </select>
                   </div>
 
-                  {/* Assigned Colleague / Vendor Filter */}
-                  <div className="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-1 bg-slate-50 md:max-w-[210px] w-full">
-                    <User className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  {/* Telefonista Filter */}
+                  <div className="flex items-center gap-2 border border-violet-200 rounded-xl px-3 py-1 bg-violet-50 md:max-w-[190px] w-full">
+                    <PhoneCall className="w-4 h-4 text-violet-400 flex-shrink-0" />
                     <select
-                      value={colleagueFilter}
-                      onChange={(e) => setColleagueFilter(e.target.value)}
-                      className="bg-transparent border-none text-xs font-bold text-slate-700 focus:outline-none w-full py-1.5 cursor-pointer"
+                      value={telefonistFilter}
+                      onChange={(e) => setTelefonistFilter(e.target.value)}
+                      className="bg-transparent border-none text-xs font-bold text-violet-700 focus:outline-none w-full py-1.5 cursor-pointer"
                     >
-                      <option value="Tutti">Assegnato (Tutti)</option>
-                      <option value="__unassigned__">⚠️ Non Assegnati</option>
-                      <optgroup label="Telefonisti / Ufficio">
-                        {colleagueObjects.filter(c => c.role !== 'venditore').map(c => (
-                          <option key={c.id} value={c.name}>{c.name}</option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Agenti Commerciali">
-                        {colleagueObjects.filter(c => c.role === 'venditore').map(c => (
-                          <option key={c.id} value={c.name}>💼 {c.name}</option>
-                        ))}
-                      </optgroup>
+                      <option value="Tutti">Telefonista (Tutti)</option>
+                      <option value="__unassigned__">⚠️ Senza Telefonista</option>
+                      {colleagueObjects.filter(c => c.role !== 'venditore').map(c => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Agente Filter */}
+                  <div className="flex items-center gap-2 border border-amber-200 rounded-xl px-3 py-1 bg-amber-50 md:max-w-[190px] w-full">
+                    <Users className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                    <select
+                      value={agenteFilter}
+                      onChange={(e) => setAgenteFilter(e.target.value)}
+                      className="bg-transparent border-none text-xs font-bold text-amber-700 focus:outline-none w-full py-1.5 cursor-pointer"
+                    >
+                      <option value="Tutti">Agente (Tutti)</option>
+                      <option value="__unassigned__">⚠️ Senza Agente</option>
+                      {colleagueObjects.filter(c => c.role === 'venditore').map(c => (
+                        <option key={c.id} value={c.name}>💼 {c.name}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -603,8 +618,22 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
                                     {lead.status}
                                   </span>
                                 </td>
-                                <td className="px-6 py-4.5 text-xs font-semibold text-slate-600">
-                                  {lead.assignedColleague || 'Nessuno'}
+                                <td className="px-6 py-4.5">
+                                  <div className="flex flex-col gap-1">
+                                    {lead.assignedTelefonisti && lead.assignedTelefonisti.length > 0 && (
+                                      <div className="flex flex-wrap gap-1">
+                                        {lead.assignedTelefonisti.map(t => (
+                                          <span key={t} className="px-1.5 py-0.5 bg-violet-100 text-violet-700 text-[10px] font-bold rounded">📞 {t}</span>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {lead.assignedColleague && (
+                                      <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded">💼 {lead.assignedColleague}</span>
+                                    )}
+                                    {(!lead.assignedTelefonisti || lead.assignedTelefonisti.length === 0) && !lead.assignedColleague && (
+                                      <span className="text-xs text-slate-400 italic">Nessuno</span>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="px-6 py-4.5 text-right" onClick={(e) => e.stopPropagation()}>
                                   <div className="flex items-center justify-end gap-1.5">
@@ -691,7 +720,7 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
       {showLeadModal && (
         <LeadModal
           lead={editingLead}
-          colleagues={colleagues}
+          colleagueObjects={colleagueObjects}
           services={availableServices}
           activeColleague={activeColleague}
           onClose={() => { setShowLeadModal(false); setEditingLead(null); }}

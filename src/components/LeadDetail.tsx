@@ -257,17 +257,14 @@ export default function LeadDetail({
             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${lead.type === 'Cliente' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
               {lead.type || 'Lead'}
             </span>
-            <select
-              value={lead.assignedColleague || ''}
-              onChange={(e) => handleQuickReassign(e.target.value)}
-              className="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg px-2 py-0.5 border border-slate-200/80 focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-colors"
-              title="Cambia operatore o agente commerciale assegnato a questo lead"
-            >
-              <option value="">-- Non assegnato --</option>
-              {colleagues.map(c => (
-                <option key={c} value={c}>👤 {c}</option>
-              ))}
-            </select>
+            {/* Badge telefonisti assegnati */}
+            {lead.assignedTelefonisti && lead.assignedTelefonisti.length > 0 && lead.assignedTelefonisti.map(t => (
+              <span key={t} className="px-2 py-0.5 bg-violet-100 text-violet-700 text-[10px] font-bold rounded-lg">📞 {t}</span>
+            ))}
+            {/* Badge agente assegnato */}
+            {lead.assignedColleague && (
+              <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-lg">💼 {lead.assignedColleague}</span>
+            )}
           </div>
           <h2 className="text-xl font-black text-slate-900 mt-1">{lead.name}</h2>
           {lead.company && (

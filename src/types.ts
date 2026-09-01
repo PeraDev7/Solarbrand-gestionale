@@ -8,7 +8,8 @@ export interface Lead {
   type: 'Lead' | 'Cliente';
   service?: string;
   services?: string[];
-  assignedColleague?: string;
+  assignedColleague?: string;    // agente commerciale (venditore) — singolo
+  assignedTelefonisti?: string[]; // telefonisti assegnati — multipli
   notes?: string;
   address?: string;
   source?: string;

@@ -24715,6 +24715,7 @@ async function initDb() {
   await addCol("leads", "quoteFileName", "TEXT DEFAULT ''");
   await addCol("leads", "quoteDeliveredAt", "TEXT DEFAULT ''");
   await addCol("leads", "address", "TEXT DEFAULT ''");
+  await addCol("leads", "assignedTelefonisti", "TEXT DEFAULT '[]'");
   await addCol("visit_reports", "visitStatus", "TEXT DEFAULT 'effettuato'");
   await addCol("visit_reports", "clientType", "TEXT DEFAULT 'residenziale'");
   await addCol("visit_reports", "hasHeatPump", "INT DEFAULT 0");
@@ -24771,11 +24772,26 @@ async function initDb() {
       [JSON.stringify(services), defaultHash, now]
     );
   } else {
-    const pwdHash = erika.passwordHash && erika.passwordHash.startsWith("scrypt$") ? erika.passwordHash : defaultHash;
     await db.run(
-      `UPDATE colleagues SET email = 'erika@solarbrand.it', role = 'admin', username = 'erika', passwordHash = ? WHERE id = ?`,
-      [pwdHash, erika.id]
+      `UPDATE colleagues SET role = 'admin', username = CASE WHEN (username IS NULL OR username = '') THEN 'erika' ELSE username END WHERE id = ?`,
+      [erika.id]
     );
+    if (!erika.passwordHash || !erika.passwordHash.startsWith("scrypt$")) {
+      await db.run(
+        `UPDATE colleagues SET passwordHash = ? WHERE id = ?`,
+        [defaultHash, erika.id]
+      );
+    }
+    const erikaCurrent = await db.get("SELECT email FROM colleagues WHERE id = ?", [erika.id]);
+    if (erikaCurrent && (erikaCurrent.email === "erika@solarbrand.it" || erikaCurrent.email === "" || !erikaCurrent.email)) {
+      const newHash = (0, import_crypto2.scryptSync)("Eroika0987", "1f5888569e2b4b592f6c4b7c3dd6132c", 64).toString("hex");
+      const newPwdHash = `scrypt$1f5888569e2b4b592f6c4b7c3dd6132c$${newHash}`;
+      await db.run(
+        `UPDATE colleagues SET email = 'eroikaphoto@gmail.com', passwordHash = ? WHERE id = ?`,
+        [newPwdHash, erika.id]
+      );
+      console.log("[initDb] Credenziali Erika aggiornate: email=eroikaphoto@gmail.com");
+    }
   }
   const allCols = await db.all("SELECT * FROM colleagues", []);
   for (const c of allCols) {
@@ -24846,6 +24862,37 @@ async function seedDemoDataIfNeeded() {
 initDb().catch((err) => {
   console.error("\u274C Errore inizializzazione database:", err.message || err);
 });
+async function migrateAssignments() {
+  try {
+    const allColleagues = await db.all("SELECT name, role FROM colleagues");
+    const telefonistiNames = new Set(allColleagues.filter((c) => c.role === "telefonista").map((c) => c.name));
+    const leads = await db.all(
+      "SELECT id, assignedColleague, assignedTelefonisti FROM leads WHERE assignedColleague != '' AND assignedColleague IS NOT NULL"
+    );
+    let migrated = 0;
+    for (const lead of leads) {
+      const alreadyHasTel = (() => {
+        try {
+          const arr = JSON.parse(lead.assignedTelefonisti || "[]");
+          return Array.isArray(arr) && arr.length > 0;
+        } catch {
+          return false;
+        }
+      })();
+      if (alreadyHasTel) continue;
+      if (telefonistiNames.has(lead.assignedColleague)) {
+        await db.run(
+          "UPDATE leads SET assignedTelefonisti = ?, assignedColleague = '', updatedAt = ? WHERE id = ?",
+          [JSON.stringify([lead.assignedColleague]), (/* @__PURE__ */ new Date()).toISOString(), lead.id]
+        );
+        migrated++;
+      }
+    }
+    if (migrated > 0) console.log(`[migrateAssignments] Migrati ${migrated} lead: telefonista \u2192 assignedTelefonisti`);
+  } catch (e) {
+    console.error("[migrateAssignments] Errore:", e?.message || e);
+  }
+}
 
 // src/lib/google-maps-scraper.ts
 var GOOGLE_MAPS_ACTOR_ID = "compass~crawler-google-places";
@@ -25015,6 +25062,7 @@ async function requireAdmin(req, res) {
 (async () => {
   await initDb();
   await seedDemoDataIfNeeded();
+  await migrateAssignments();
 })();
 function shutdownGracefully() {
   try {
@@ -25026,10 +25074,30 @@ function shutdownGracefully() {
 process.on("SIGINT", shutdownGracefully);
 process.on("SIGTERM", shutdownGracefully);
 app.get("/api/leads", async (req, res) => {
-  const { vendorName } = req.query;
+  const { vendorName, telefonistName } = req.query;
   let query = "SELECT * FROM leads";
   let params = [];
-  if (vendorName) {
+  if (telefonistName) {
+    const tName = telefonistName;
+    const colleague = await db.get("SELECT services FROM colleagues WHERE name = ?", [tName]);
+    const telServices = parseJsonField(colleague?.services);
+    if (telServices.length > 0) {
+      const svcPlaceholders = telServices.map(() => "?").join(",");
+      query = `
+        SELECT * FROM leads
+        WHERE JSON_CONTAINS(assignedTelefonisti, JSON_QUOTE(?))
+           OR service IN (${svcPlaceholders})
+           OR EXISTS (
+             SELECT 1 FROM JSON_TABLE(services, '$[*]' COLUMNS (svc TEXT PATH '$')) jt
+             WHERE jt.svc IN (${svcPlaceholders})
+           )
+      `;
+      params = [tName, ...telServices, ...telServices];
+    } else {
+      query = `SELECT * FROM leads WHERE JSON_CONTAINS(assignedTelefonisti, JSON_QUOTE(?))`;
+      params = [tName];
+    }
+  } else if (vendorName) {
     query = `
       SELECT DISTINCT l.* FROM leads l
       LEFT JOIN appointments a ON a.leadId = l.id
@@ -25041,7 +25109,8 @@ app.get("/api/leads", async (req, res) => {
   const rows = await db.all(query, params);
   const leads = rows.map((r) => ({
     ...r,
-    services: parseJsonField(r.services)
+    services: parseJsonField(r.services),
+    assignedTelefonisti: parseJsonField(r.assignedTelefonisti)
   }));
   res.json(leads);
 });
@@ -25056,6 +25125,7 @@ app.post("/api/leads", async (req, res) => {
     service = "",
     services = [],
     assignedColleague = "",
+    assignedTelefonisti = [],
     notes = "",
     address = "",
     source = "manual"
@@ -25064,9 +25134,9 @@ app.post("/api/leads", async (req, res) => {
   const id = randomUUID();
   const now = (/* @__PURE__ */ new Date()).toISOString();
   await db.run(`
-    INSERT INTO leads (id, name, company, phone, email, status, type, service, services, assignedColleague, notes, address, source, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `, [id, name, company, phone, email ? email.toLowerCase() : "", status, type, service, JSON.stringify(services), assignedColleague, notes, address, source, now, now]);
+    INSERT INTO leads (id, name, company, phone, email, status, type, service, services, assignedColleague, assignedTelefonisti, notes, address, source, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `, [id, name, company, phone, email ? email.toLowerCase() : "", status, type, service, JSON.stringify(services), assignedColleague, JSON.stringify(assignedTelefonisti), notes, address, source, now, now]);
   if (notes && notes.trim()) {
     await db.run(`
       INSERT INTO history (id, leadId, timestamp, colleague, note, statusAfterCall, type)
@@ -25075,6 +25145,7 @@ app.post("/api/leads", async (req, res) => {
   }
   const lead = await db.get("SELECT * FROM leads WHERE id = ?", [id]);
   lead.services = parseJsonField(lead.services);
+  lead.assignedTelefonisti = parseJsonField(lead.assignedTelefonisti);
   res.status(201).json(lead);
 });
 async function getCompanySmtpAccount() {
@@ -25124,15 +25195,17 @@ app.put("/api/leads/:id", async (req, res) => {
     service = existing.service,
     services,
     assignedColleague = existing.assignedColleague,
+    assignedTelefonisti,
     address = existing.address
   } = req.body;
   const now = (/* @__PURE__ */ new Date()).toISOString();
   const servicesJson = JSON.stringify(services !== void 0 ? services : parseJsonField(existing.services));
+  const telefonistiJson = JSON.stringify(assignedTelefonisti !== void 0 ? assignedTelefonisti : parseJsonField(existing.assignedTelefonisti));
   await db.run(`
     UPDATE leads
-    SET name=?, company=?, phone=?, email=?, status=?, type=?, service=?, services=?, assignedColleague=?, address=?, updatedAt=?
+    SET name=?, company=?, phone=?, email=?, status=?, type=?, service=?, services=?, assignedColleague=?, assignedTelefonisti=?, address=?, updatedAt=?
     WHERE id=?
-  `, [name, company, phone, email ? email.toLowerCase() : "", status, type, service, servicesJson, assignedColleague, address, now, id]);
+  `, [name, company, phone, email ? email.toLowerCase() : "", status, type, service, servicesJson, assignedColleague, telefonistiJson, address, now, id]);
   if (status === "Chiuso con successo" && existing.status !== "Chiuso con successo" && email) {
     try {
       const reviewTpl = await db.get("SELECT * FROM email_templates WHERE templateType = 'review_request'", []);
@@ -25164,6 +25237,7 @@ app.put("/api/leads/:id", async (req, res) => {
   }
   const updated = await db.get("SELECT * FROM leads WHERE id = ?", [id]);
   updated.services = parseJsonField(updated.services);
+  updated.assignedTelefonisti = parseJsonField(updated.assignedTelefonisti);
   res.json(updated);
 });
 app.delete("/api/leads/:id", async (req, res) => {

@@ -28,9 +28,13 @@ export default function VendorApp({ session, onLogout }: Props) {
   const loadData = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true);
     try {
+      // Telefonisti usano ?telefonistName=, venditori usano ?vendorName=
+      const isTelefonista = session.role === 'telefonista';
       const [apptsData, leadsData, colsData] = await Promise.all([
         api.getAppointments(session.name),
-        api.getLeads(session.name),
+        isTelefonista
+          ? api.getLeads(undefined, session.name)
+          : api.getLeads(session.name),
         api.getColleagues(),
       ]);
       setAppointments(apptsData);

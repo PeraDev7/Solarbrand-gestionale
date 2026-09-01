@@ -40,7 +40,13 @@ export const api = {
   checkPassword: (password: string, level: 'admin' | 'operator') => request<{ok: boolean}>('POST', '/api/auth/check-password', { password, level }),
   disconnectGoogleCalendar: (vendorId: string) => request<{ok: boolean}>('POST', '/api/auth/google/disconnect', { vendorId }),
 
-  getLeads: (vendorName?: string) => request<any[]>('GET', `/api/leads${vendorName ? `?vendorName=${encodeURIComponent(vendorName)}` : ''}`),
+  getLeads: (vendorName?: string, telefonistName?: string) => {
+    const params = new URLSearchParams();
+    if (vendorName) params.set('vendorName', vendorName);
+    if (telefonistName) params.set('telefonistName', telefonistName);
+    const qs = params.toString();
+    return request<any[]>('GET', `/api/leads${qs ? `?${qs}` : ''}`);
+  },
   createLead: (data: any) => request<any>('POST', '/api/leads', data),
   updateLead: (id: string, data: any) => request<any>('PUT', `/api/leads/${id}`, data),
   deleteLead: (id: string) => request<any>('DELETE', `/api/leads/${id}`),
