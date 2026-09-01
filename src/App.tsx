@@ -74,7 +74,8 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
   const [statusFilter, setStatusFilter] = useState<string>('Tutti');
   const [typeFilter, setTypeFilter] = useState<'Tutti' | 'Lead' | 'Cliente'>('Tutti');
   const [serviceFilter, setServiceFilter] = useState<string>('Tutti');
-  const [colleagueFilter, setColleagueFilter] = useState<string>('Tutti');
+  const [telefonistFilter, setTelefonistFilter] = useState<string>('Tutti');
+  const [agenteFilter, setAgenteFilter] = useState<string>('Tutti');
 
   const [currentTab, setCurrentTab] = useState<'leads' | 'calendar' | 'reports'>('leads');
   const [selectedVendorForCalendar, setSelectedVendorForCalendar] = useState<string>('Tutti');
