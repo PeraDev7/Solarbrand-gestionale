@@ -3,7 +3,7 @@
 > 🟢 **STATO SISTEMA: ONLINE E ATTIVO SU HOSTINGER**  
 > **URL PUBBLICO**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **REPOSITORY GITHUB (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **VERSIONE ATTUALE**: 3.9 (Assegnazione Doppia Lead Telefonisti/Agente + Fix Credenziali Erika)
+> **VERSIONE ATTUALE**: 4.0 (Tipologie Trattate + Restrizioni Ruolo Telefonista & Permessi Super Admin)
 
 ---
 
@@ -24,9 +24,9 @@ Tutti gli account preesistenti (tranne Erika) hanno come password iniziale: **`S
 
 | Nome | Ruolo | Email / Login | Password Iniziale | Note |
 |---|---|---|---|---|
-| **Erika** | `admin` | `eroikaphoto@gmail.com` (o `erika`) | `Eroika0987` | 👑 **Super Admin**: Gestione team, reset password, campagne email |
-| **Laura** | `telefonista` | `laura@solarbrand.it` | `SolarBrand2026!` | Ufficio / Call Center |
-| **Luciana** | `telefonista` | `luciana@solarbrand.it` | `SolarBrand2026!` | Ufficio / Call Center |
+| **Erika** | `admin` | `eroikaphoto@gmail.com` (o `erika`) | `Eroika0987` | 👑 **Super Admin**: Gestione team, reset password, campagne email, template, import lead, tipologie |
+| **Laura** | `telefonista` | `laura@solarbrand.it` | `SolarBrand2026!` | Ufficio / Call Center (lavora lead/tipologie assegnati, invio email da scheda, assegna agenti) |
+| **Luciana** | `telefonista` | `luciana@solarbrand.it` | `SolarBrand2026!` | Ufficio / Call Center (lavora lead/tipologie assegnati, invio email da scheda, assegna agenti) |
 | **Marco Rossi** | `venditore` | `marco.rossi@solarbrand.it` | `SolarBrand2026!` | Agente Commerciale |
 | **Stefano Bianchi** | `venditore` | `stefano.bianchi@solarbrand.it` | `SolarBrand2026!` | Agente Commerciale |
 | **Alessandro Neri** | `venditore` | `alessandro.neri@solarbrand.it` | `SolarBrand2026!` | Agente Commerciale |
@@ -36,7 +36,24 @@ Tutti gli account preesistenti (tranne Erika) hanno come password iniziale: **`S
 | **Andrea Conti** | `venditore` | `andrea.conti@solarbrand.it` | `SolarBrand2026!` | Agente Commerciale |
 | **Fabio Test** | `venditore` | `fabio_test@solarbrand.it` | `SolarBrand2026!` | Agente Commerciale |
 
-*💡 **Gestione Team**: Da Erika (`erika@solarbrand.it`), clicca su **Gestione Utenti / Team** in alto per aggiungere o modificare colleghi. Il sistema mostra la conferma visiva in chiaro della password impostata e permette di visualizzarla con l'icona occhio.*
+---
+
+## 🛡️ MATRICE PERMESSI RUOLI (v4.0)
+
+| Funzionalità / Azione | Super Admin (`admin`) | Telefonista (`telefonista`) | Venditore (`venditore`) |
+|---|:---:|:---:|:---:|
+| **Importazione Massiva Lead (Excel/CSV)** | ✅ | ❌ | ❌ |
+| **Creazione Manuale Nuovo Lead** | ✅ | ❌ | ❌ |
+| **Creazione / Modifica Template Email** | ✅ | ❌ | ❌ |
+| **Creazione / Invio Template SMS** | ✅ | ❌ | ❌ |
+| **Configurazione Server SMTP & IMAP** | ✅ | ❌ | ❌ |
+| **Creazione & Invio Campagne Massive** | ✅ | ❌ | ❌ |
+| **Gestione Team, Tipologie & Password** | ✅ | ❌ | ❌ |
+| **Invio Email Singola da Scheda Lead** | ✅ | ✅ (con scelta template) | ❌ |
+| **Assegnazione Agente Commerciale su Lead** | ✅ | ✅ | ❌ |
+| **Visibilità Lead** | Tutti | Solo assegnati nominalmente O per Tipologia | Solo appuntamenti/lead assegnati |
+
+*💡 **Gestione Team**: Da Erika (`eroikaphoto@gmail.com`), clicca su **Gestione Utenti / Team** in alto per aggiungere o modificare colleghi. Il sistema mostra la conferma visiva in chiaro della password impostata e permette di visualizzarla con l'icona occhio.*
 
 ---
 

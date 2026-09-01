@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 3.9 (Doppia Assegnazione Lead Telefonisti Multipli/Agente Singolo + Fix Critico Credenziali Erika)  
+> **Versione**: 4.0 (Rinomina Servizi in Tipologie + Restrizioni Ruolo Telefonista & Permessi Super Admin)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
@@ -12,30 +12,24 @@
 
 **Solarbrand Flow** è un software gestionale web studiato specificamente per le aziende che vendono e installano **impianti fotovoltaici, pompe di calore e Comunità Energetiche (CER)**. 
 
-L'applicazione supporta il flusso operativo aziendale completo con due portali distinti:
+L'applicazione supporta il flusso operativo aziendale completo con tre livelli di profilo:
 
-### 1.1 Portale Ufficio / Call Center (Super Admin & Telefonisti)
-- **Qualifica e Chiamate**: Presenta i prodotti al telefono e qualifica i contatti.
-- **Doppia Assegnazione Indipendente Lead (Novità v3.9)**:
-  - **Telefonisti Assegnati (Multipli)**: L'amministratore può assegnare ogni lead a uno o più operatori/telefonisti tramite comodi selettori multi-checkbox (badge viola).
-  - **Agente Commerciale (Singolo)**: Assegnazione dedicata a un solo venditore tramite menu a tendina (badge ambra).
-  - **Regole di Visibilità Telefonisti**: Un telefonista visualizza i lead a lui affidati nominalmente (`assignedTelefonisti`) **oppure** tutti i lead che richiedono uno dei **Servizi** a lui assegnati nella gestione collaboratori (`services`).
-- **Filtri Avanzati Toolbar**:
-  - Menu a tendina separati: `Telefonista (Tutti)` / `⚠️ Senza Telefonista` / Singoli operatori.
-  - Menu a tendina: `Agente (Tutti)` / `⚠️ Senza Agente` / Singoli commerciali.
-- **Campagne Email Marketing & Tracking Completo**:
-  - Creazione ed invio massivo email tramite account SMTP aziendale (`info@solarbrandkg.it`).
-  - **Pixel Tracking 1x1 Invisibile**: traccia l'esatto momento dell'apertura email.
-  - **Click Tracking con Redirect 302**: riscrive i link nelle email e traccia l'interazione del lead.
-  - **Inbox Scanner & Monitoraggio Risposte IMAP**: intercetta sia le risposte alle campagne sia le email spontanee inviate dai clienti registrati.
-- **Assegnazione Sopralluoghi & Richiami**: Fissa due tipologie distinte di appuntamento:
-  - 📞 **Richiamo Telefonico Ufficio**: per ricontattare internamente il lead via telefono.
-  - 🏠 **Sopralluogo Fisico Agente**: affida l'appuntamento sul campo ad uno specifico agente commerciale (es. *Marco Rossi*, *Stefano Bianchi*, ecc.).
-- **Gestione Template Email & SMS di Sistema**: Gestisce i template email e SMS aziendali, inclusi i 2 template automatici di sistema (*Ringraziamento Post-Sopralluogo* e *Richiesta Recensione Stelline*).
-- **Monitoraggio Esiti, Preventivi & Stelline Agenti**: Vede nello storico del cliente i report dei venditori, i preventivi allegati (WhatsApp, Cartaceo, Email) e la media valutazioni a stelline ricevuta dagli agenti.
-- **Esportazione Report Attività (Excel & PDF Professionale)**: Genera report avanzati per presentazioni aziendali.
+### 1.1 Portale Super Admin (es. Erika — `eroikaphoto@gmail.com`)
+- **Gestione Completa Database Lead**: Creazione manuale nuovi lead, importazione massiva da Excel/CSV, riassegnazione a telefonisti e agenti commerciali.
+- **Tipologie Trattate dall'Azienda (ex Servizi)**: Configurazione e gestione delle tipologie di intervento (es. *Fotovoltaico Residenziale*, *Agricolo*, *Edile*, *Pompa di Calore*, *Comunità Energetica*).
+- **Gestione Team & Collaboratori**: Creazione account, assegnazione ruoli (`admin`, `telefonista`, `venditore`), assegnazione tipologie gestite e reset password visibile in chiaro.
+- **Campagne Email Marketing & Tracking**: Creazione ed invio di campagne email massive tramite account SMTP aziendale (`info@solarbrandkg.it`), monitoraggio aperture pixel 1x1, click 302 e risposte automatiche via IMAP.
+- **Template Email & SMS Aziendali**: Creazione, modifica e gestione dei modelli di testo per comunicazioni rapide e automatiche.
+- **Configurazioni Server**: Gestione account SMTP e caselle IMAP con Inbox Scanner.
 
-### 1.2 Portale Agenti Commerciali / Venditori (es. Marco Rossi, Stefano Bianchi, Alessandro Neri, ecc.)
+### 1.2 Portale Ufficio / Call Center (Telefonisti — es. Laura, Luciana)
+- **Visualizzazione Filtrata**: Visualizzano esclusivamente i lead assegnati direttamente a loro (`assignedTelefonisti`) **oppure** i lead con una delle **Tipologie** loro assegnate.
+- **Qualifica e Chiamate**: Lavorano i lead, aggiornano lo stato, aggiungono note di chiamata e fissano appuntamenti.
+- **Invio Email da Scheda Lead**: Possono inviare email singole direttamente dalla scheda del cliente, selezionando tra i template predefiniti creati dall'admin.
+- **Assegnazione Agente Commerciale**: Possono assegnare un venditore a un lead o sopralluogo.
+- **Restrizioni di Sicurezza**: NON possono creare nuovi lead, NON possono importare file Excel/CSV, NON possono creare/modificare template, NON inviano SMS e NON hanno accesso a campagne o impostazioni server.
+
+### 1.3 Portale Agenti Commerciali / Venditori (es. Marco Rossi, Stefano Bianchi, Alessandro Neri, ecc.)
 - **Vista Appuntamenti Personali & Rating**: Vedono esclusivamente la lista sopralluoghi ed i lead affidati a loro, con il badge **Media Stelline (valutazione clienti)** in evidenza.
 - **Sincronizzazione Google Calendar Personale (OAuth 2.0)**:
   - Ciascun agente commerciale collega autonomamente il proprio account Google personale/aziendale cliccando su *"Collega Google Calendar"*.
@@ -48,9 +42,23 @@ L'applicazione supporta il flusso operativo aziendale completo con due portali d
 
 ---
 
-## 2. Funzionalità Avanzate & Aggiornamenti Recenti (v3.9)
+## 2. Funzionalità Avanzate & Aggiornamenti Recenti (v4.0)
 
-### 2.1 Doppia Assegnazione Lead (Telefonisti Multipli + Agente Singolo)
+### 2.1 Rinomina Globale "Servizi" ➔ "Tipologie"
+- **Terminologia Allineata al Business**: Sostituita la dicitura *Servizi* con *Tipologie* (es. agricolo, edile, industriale, residenziale).
+- **Adeguamento UI Completo**:
+  - Dropdown toolbar: `Tipologia (Tutte)`.
+  - Intestazione colonna tabella lead: `Tipologia`.
+  - Modale lead (`LeadModal.tsx`): `Tipologie di Interesse`.
+  - Gestione collaboratori (`SuperAdminArea.tsx`): `Tipologie Trattate dall'Azienda`.
+  - Report e PDF (`ReportsView.tsx`): filtri e tabelle con intestazione `Tipologie`.
+
+### 2.2 Restrizioni di Ruolo & Sicurezza Operatori Call Center
+- **Pulsanti Amministrativi Riservati**:
+  - Solo il Super Admin può visualizzare i pulsanti: *Template Email*, *Template SMS*, *Server SMTP*, *Server IMAP*, *Campagne Email Massive*, *Importa Lead* e *Nuovo Lead*.
+- **Scheda Lead**: Rimosso il pulsante/tendina SMS per i profili con ruolo `telefonista`. Mantenuto il modulo invio email con selezione dei template aziendali.
+
+### 2.3 Doppia Assegnazione Lead (Telefonisti Multipli + Agente Singolo)
 - **Nuovo campo DB `assignedTelefonisti` (JSON Array)**: Memorizza l'elenco dei telefonisti assegnati. `assignedColleague` mantiene l'agente commerciale venditore.
 - **Migrazione Automatica Idempotente (`migrateAssignments()`)**: All'avvio del server, i lead esistenti che avevano un telefonista in `assignedColleague` sono stati migrati automaticamente nel nuovo array JSON, preservando i venditori.
 - **Interfaccia `LeadModal.tsx` Rinnovata**:
