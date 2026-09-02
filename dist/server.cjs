@@ -25940,10 +25940,18 @@ app.post("/api/leads/import", async (req, res) => {
         const phone = String(raw.phone ?? raw.telefono ?? raw.tel ?? "").trim();
         const email = String(raw.email ?? "").toLowerCase().trim();
         const company = String(raw.company ?? raw.azienda ?? "").trim();
-        const service = String(raw.service ?? raw.servizio ?? "").trim();
         const notes = String(raw.notes ?? raw.note ?? "").trim();
         const address = String(raw.address ?? raw.indirizzo ?? raw.via ?? "").trim();
-        const assignedColleague = String(raw.assignedColleague ?? raw.operatore ?? raw.venditore ?? raw.assegnato ?? "").trim();
+        const assignedColleague = String(raw.assignedColleague ?? raw.operatore ?? raw.venditore ?? raw.agente ?? raw.assegnato ?? "").trim();
+        const assignedTelefonista = String(raw.assignedTelefonista ?? raw.telefonista ?? "").trim();
+        let assignedTelefonisti = [];
+        if (Array.isArray(raw.assignedTelefonisti)) {
+          assignedTelefonisti = raw.assignedTelefonisti.map((t) => String(t).trim()).filter(Boolean);
+        } else if (assignedTelefonista) {
+          assignedTelefonisti = [assignedTelefonista];
+        }
+        const service = String(raw.service ?? raw.servizio ?? raw.tipologia ?? "").trim();
+        const services = Array.isArray(raw.services) && raw.services.length > 0 ? raw.services.map((s) => String(s).trim()).filter(Boolean) : service ? [service] : [];
         if (!name) {
           failed++;
           results.push({ ok: false, row: i + 1, error: "name mancante" });
@@ -25972,8 +25980,25 @@ app.post("/api/leads/import", async (req, res) => {
           }
           if (duplicate_mode === "use_existing") {
             const now2 = (/* @__PURE__ */ new Date()).toISOString();
-            const newAssigned = assignedColleague || duplicate.assignedColleague || "";
-            await db.run("UPDATE leads SET name=?, company=?, phone=?, email=?, service=?, assignedColleague=?, status=?, address=?, updatedAt=? WHERE id=?", [name, company || duplicate.company, phone || duplicate.phone, email || duplicate.email, service || duplicate.service, newAssigned, "Nuovo", address || duplicate.address, now2, duplicate.id]);
+            const newAssignedColleague = assignedColleague || duplicate.assignedColleague || "";
+            const existingTel = parseJsonField(duplicate.assignedTelefonisti) || [];
+            const newTelefonisti = assignedTelefonisti.length > 0 ? assignedTelefonisti : existingTel;
+            const newServices = services.length > 0 ? services : parseJsonField(duplicate.services) || (duplicate.service ? [duplicate.service] : []);
+            const newService = service || duplicate.service || (newServices[0] || "");
+            await db.run("UPDATE leads SET name=?, company=?, phone=?, email=?, service=?, services=?, assignedColleague=?, assignedTelefonisti=?, status=?, address=?, updatedAt=? WHERE id=?", [
+              name,
+              company || duplicate.company,
+              phone || duplicate.phone,
+              email || duplicate.email,
+              newService,
+              JSON.stringify(newServices),
+              newAssignedColleague,
+              JSON.stringify(newTelefonisti),
+              "Nuovo",
+              address || duplicate.address,
+              now2,
+              duplicate.id
+            ]);
             updated++;
             if (email) updatedIds.push(duplicate.id);
             results.push({ ok: true, row: i + 1, updated: true });
@@ -25982,11 +26007,10 @@ app.post("/api/leads/import", async (req, res) => {
         }
         const id = randomUUID();
         const now = (/* @__PURE__ */ new Date()).toISOString();
-        const services = service ? [service] : [];
         await db.run(`
-          INSERT INTO leads (id, name, company, phone, email, status, type, service, services, assignedColleague, source, notes, address, createdAt, updatedAt)
-          VALUES (?, ?, ?, ?, ?, 'Nuovo', 'Lead', ?, ?, ?, 'csv', ?, ?, ?, ?)
-        `, [id, name, company, phone, email, service, JSON.stringify(services), assignedColleague, notes, address, now, now]);
+          INSERT INTO leads (id, name, company, phone, email, status, type, service, services, assignedColleague, assignedTelefonisti, source, notes, address, createdAt, updatedAt)
+          VALUES (?, ?, ?, ?, ?, 'Nuovo', 'Lead', ?, ?, ?, ?, 'csv', ?, ?, ?, ?)
+        `, [id, name, company, phone, email, service, JSON.stringify(services), assignedColleague, JSON.stringify(assignedTelefonisti), notes, address, now, now]);
         if (notes) {
           await db.run("INSERT INTO history (id, leadId, timestamp, colleague, note, statusAfterCall, type) VALUES (?, ?, ?, ?, ?, ?, ?)", [randomUUID(), id, now, "Importazione", notes, "Nuovo", "note"]);
         }
@@ -26008,7 +26032,7 @@ app.post("/api/leads/import", async (req, res) => {
 });
 app.post("/api/leads/apify-search", async (req, res) => {
   try {
-    const { industries, locations, fetch_count = 20, keywords, cities, wantsVerifiedEmail = true } = req.body || {};
+    const { industries, locations, fetch_count = 20, keywords, cities, wantsVerifiedEmail = true, assignedColleague = "", assignedTelefonista = "", service = "" } = req.body || {};
     const settingRow = await db.get("SELECT value FROM settings WHERE `key` IN ('apify_token', 'apify_api_key') ORDER BY CASE `key` WHEN 'apify_token' THEN 0 ELSE 1 END LIMIT 1", []);
     const apifyToken = (settingRow?.value || process.env.APIFY_TOKEN || process.env.APIFY_API_KEY || "").trim();
     if (!apifyToken) {
@@ -26039,7 +26063,10 @@ app.post("/api/leads/apify-search", async (req, res) => {
       currentApifyRunId: started.runId,
       currentBatchSize: initialBatchSize,
       roundsDone: 0,
-      collectedLeads: []
+      collectedLeads: [],
+      assignedColleague: assignedColleague ? String(assignedColleague).trim() : "",
+      assignedTelefonista: assignedTelefonista ? String(assignedTelefonista).trim() : "",
+      customService: service ? String(service).trim() : ""
     });
     res.json({ ok: true, runId: jobId, status: started.status });
   } catch (error) {
@@ -26149,10 +26176,14 @@ app.get("/api/leads/apify-search/status", async (req, res) => {
       if (!exists) {
         const id = randomUUID();
         try {
+          const leadService = job.customService || service || "";
+          const leadServices = job.customService ? [job.customService] : services && services.length > 0 ? services : leadService ? [leadService] : [];
+          const leadColleague = job.assignedColleague || "";
+          const leadTelefonisti = job.assignedTelefonista ? [job.assignedTelefonista] : [];
           await db.run(`
-            INSERT INTO leads (id, name, company, phone, email, status, type, service, services, source, notes, address, createdAt, updatedAt)
-            VALUES (?, ?, ?, ?, ?, 'Nuovo', 'Lead', ?, ?, 'apify_google_maps', ?, ?, ?, ?)
-          `, [id, name, company, phone, email, service, JSON.stringify(services), notes, address, now, now]);
+            INSERT INTO leads (id, name, company, phone, email, status, type, service, services, assignedColleague, assignedTelefonisti, source, notes, address, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, 'Nuovo', 'Lead', ?, ?, ?, ?, 'apify_google_maps', ?, ?, ?, ?)
+          `, [id, name, company, phone, email, leadService, JSON.stringify(leadServices), leadColleague, JSON.stringify(leadTelefonisti), notes, address, now, now]);
           await db.run(`
             INSERT INTO history (id, leadId, timestamp, colleague, note, statusAfterCall, type)
             VALUES (?, ?, ?, ?, ?, 'Nuovo', 'note')

@@ -757,8 +757,9 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
       {showImportModal && (
         <ImportLeadsModal 
           leads={leads}
-          services={availableServices}
+          services={services}
           colleagues={colleagues}
+          colleagueObjects={colleagueObjects}
           activeColleague={activeColleague}
           onClose={() => {
             setShowImportModal(false);

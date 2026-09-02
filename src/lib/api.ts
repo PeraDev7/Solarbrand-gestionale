@@ -105,7 +105,16 @@ export const api = {
   setSetting: (key: string, value: string) => request<any>('POST', '/api/settings', { key, value }),
 
   importLeads: (leads: any[], duplicate_mode: string) => request<any>('POST', '/api/leads/import', { leads, duplicate_mode }),
-  startApifySearch: (data: { industries: string; locations: string; fetch_count: number; keywords?: string; cities?: string }) =>
+  startApifySearch: (data: { 
+    industries: string; 
+    locations: string; 
+    fetch_count: number; 
+    keywords?: string; 
+    cities?: string;
+    assignedColleague?: string;
+    assignedTelefonista?: string;
+    service?: string;
+  }) =>
     request<{ ok: boolean; runId: string; status: string }>('POST', '/api/leads/apify-search', data),
   getApifySearchStatus: (runId: string) =>
     request<{

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { read, utils } from 'xlsx';
-import { X, UploadCloud, FileSpreadsheet, CheckCircle, AlertTriangle, Globe, MapPin, Search, Key, HelpCircle, Save, Sparkles, Send, Mail, Loader2, Eye, EyeOff } from 'lucide-react';
-import { Lead } from '../types';
+import { X, UploadCloud, FileSpreadsheet, CheckCircle, AlertTriangle, Globe, MapPin, Search, Key, HelpCircle, Save, Sparkles, Send, Mail, Loader2, Eye, EyeOff, Users } from 'lucide-react';
+import { Lead, Colleague } from '../types';
 import { api, authFetch as fetch } from '../lib/api';
 
 type Tab = 'file' | 'apify';
@@ -12,10 +12,11 @@ interface Props {
   services: string[];
   leads: Lead[];
   colleagues?: string[];
+  colleagueObjects?: Colleague[];
   activeColleague?: string;
 }
 
-export default function ImportLeadsModal({ onClose, services, leads, colleagues = [], activeColleague = '' }: Props) {
+export default function ImportLeadsModal({ onClose, services, leads, colleagues = [], colleagueObjects = [], activeColleague = '' }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('file');
 
   return (
@@ -63,20 +64,36 @@ export default function ImportLeadsModal({ onClose, services, leads, colleagues 
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          {activeTab === 'file' && <FileImportTab leads={leads} services={services} colleagues={colleagues} activeColleague={activeColleague} onClose={onClose} />}
-          {activeTab === 'apify' && <ApifyGoogleMapsTab onClose={onClose} />}
+          {activeTab === 'file' && <FileImportTab leads={leads} services={services} colleagues={colleagues} colleagueObjects={colleagueObjects} activeColleague={activeColleague} onClose={onClose} />}
+          {activeTab === 'apify' && <ApifyGoogleMapsTab services={services} colleagues={colleagues} colleagueObjects={colleagueObjects} onClose={onClose} />}
         </div>
       </div>
     </div>
   );
 }
 
-function FileImportTab({ leads, services, colleagues = [], activeColleague = '', onClose }: { leads: Lead[], services: string[], colleagues?: string[], activeColleague?: string, onClose: () => void }) {
+function FileImportTab({ leads, services, colleagues = [], colleagueObjects = [], activeColleague = '', onClose }: { leads: Lead[], services: string[], colleagues?: string[], colleagueObjects?: Colleague[], activeColleague?: string, onClose: () => void }) {
   const [file, setFile] = useState<File | null>(null);
+  const [rawRows, setRawRows] = useState<any[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
-  const [mapping, setMapping] = useState<Record<string, string>>({ name: '', phone: '', email: '', company: '', service: '', assignedColleague: '', notes: '' });
-  const [defaultServices, setDefaultServices] = useState<string[]>([]);
-  const [defaultColleague, setDefaultColleague] = useState<string>(activeColleague || '');
+  const [mapping, setMapping] = useState<Record<string, string>>({ name: '', phone: '', email: '', company: '', address: '', service: '', assignedColleague: '', assignedTelefonista: '', notes: '' });
+
+  const venditori = colleagueObjects && colleagueObjects.length > 0
+    ? colleagueObjects.filter(c => c.role === 'venditore')
+    : colleagues.map(c => ({ id: c, name: c, role: 'venditore' as const }));
+
+  const telefonisti = colleagueObjects && colleagueObjects.length > 0
+    ? colleagueObjects.filter(c => c.role === 'telefonista' || !c.role)
+    : colleagues.map(c => ({ id: c, name: c, role: 'telefonista' as const }));
+
+  const [defaultColleague, setDefaultColleague] = useState<string>(
+    activeColleague && venditori.some(v => v.name === activeColleague) ? activeColleague : ''
+  );
+  const [defaultTelefonista, setDefaultTelefonista] = useState<string>(
+    activeColleague && telefonisti.some(t => t.name === activeColleague) ? activeColleague : ''
+  );
+  const [defaultService, setDefaultService] = useState<string>('');
+
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
@@ -95,8 +112,9 @@ function FileImportTab({ leads, services, colleagues = [], activeColleague = '',
     { key: 'email', label: 'Email', required: false },
     { key: 'company', label: 'Azienda', required: false },
     { key: 'address', label: 'Indirizzo (Via, Città)', required: false },
-    { key: 'assignedColleague', label: 'Assegna ad Agente / Operatore', required: false },
-    { key: 'service', label: 'Servizio di interesse', required: false },
+    { key: 'assignedColleague', label: 'Agente Commerciale (Venditore)', required: false },
+    { key: 'assignedTelefonista', label: 'Telefonista (Ufficio)', required: false },
+    { key: 'service', label: 'Tipologia Trattata', required: false },
     { key: 'notes', label: 'Note', required: false },
   ];
 
@@ -126,13 +144,16 @@ function FileImportTab({ leads, services, colleagues = [], activeColleague = '',
             else if (lowerH.includes('mail') || lowerH.includes('email')) initialMapping.email = h;
             else if (lowerH.includes('azienda') || lowerH.includes('company') || lowerH.includes('ragione')) initialMapping.company = h;
             else if (lowerH.includes('indirizzo') || lowerH.includes('via') || lowerH.includes('address') || lowerH.includes('città')) initialMapping.address = h;
-            else if (lowerH.includes('operatore') || lowerH.includes('venditore') || lowerH.includes('agente') || lowerH.includes('collega') || lowerH.includes('assegnato')) initialMapping.assignedColleague = h;
-            else if (lowerH.includes('servizi') || lowerH.includes('service')) initialMapping.service = h;
+            else if (lowerH.includes('telefonista') || lowerH.includes('call center') || lowerH.includes('ufficio')) initialMapping.assignedTelefonista = h;
+            else if (lowerH.includes('venditore') || lowerH.includes('agente') || lowerH.includes('commerciale')) initialMapping.assignedColleague = h;
+            else if (lowerH.includes('operatore') || lowerH.includes('collega') || lowerH.includes('assegnato')) initialMapping.assignedColleague = h;
+            else if (lowerH.includes('servizi') || lowerH.includes('service') || lowerH.includes('tipologia') || lowerH.includes('tipo')) initialMapping.service = h;
             else if (lowerH.includes('note') || lowerH.includes('messaggio')) initialMapping.notes = h;
           });
           setMapping(initialMapping);
           const rows = utils.sheet_to_json(ws) as any[];
-          generatePreview(rows, initialMapping, defaultServices);
+          setRawRows(rows);
+          generatePreview(rows, initialMapping, defaultColleague, defaultTelefonista, defaultService);
         }
       } catch (err) {
         alert("Errore durante la lettura del file.");
@@ -167,15 +188,22 @@ function FileImportTab({ leads, services, colleagues = [], activeColleague = '',
     if (droppedFile) processFile(droppedFile);
   };
 
-  const generatePreview = (rawData: any[], currentMapping: Record<string, string>, currentDefaultServices: string[] = []) => {
+  const generatePreview = (
+    rawData: any[], 
+    currentMapping: Record<string, string>, 
+    curColleague: string = defaultColleague, 
+    curTelefonista: string = defaultTelefonista, 
+    curService: string = defaultService
+  ) => {
     const preview = rawData.slice(0, 5).map(row => ({
       name: row[currentMapping.name] ? String(row[currentMapping.name]) : '',
       phone: row[currentMapping.phone] ? String(row[currentMapping.phone]) : '',
       email: row[currentMapping.email] ? String(row[currentMapping.email]) : '',
       company: row[currentMapping.company] ? String(row[currentMapping.company]) : '',
       address: row[currentMapping.address] ? String(row[currentMapping.address]) : '',
-      assignedColleague: (row[currentMapping.assignedColleague] ? String(row[currentMapping.assignedColleague]) : '') || defaultColleague,
-      service: (row[currentMapping.service] ? String(row[currentMapping.service]) : '') || (currentDefaultServices.length > 0 ? currentDefaultServices[0] : ''),
+      assignedColleague: (row[currentMapping.assignedColleague] ? String(row[currentMapping.assignedColleague]) : '') || curColleague,
+      assignedTelefonista: (currentMapping.assignedTelefonista && row[currentMapping.assignedTelefonista] ? String(row[currentMapping.assignedTelefonista]) : '') || curTelefonista,
+      service: (row[currentMapping.service] ? String(row[currentMapping.service]) : '') || curService,
       notes: row[currentMapping.notes] ? String(row[currentMapping.notes]) : '',
     }));
     setPreviewData(preview);
@@ -184,21 +212,8 @@ function FileImportTab({ leads, services, colleagues = [], activeColleague = '',
   const handleMappingChange = (fieldKey: string, columnName: string) => {
     const newMapping = { ...mapping, [fieldKey]: columnName };
     setMapping(newMapping);
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        try {
-          const bstr = evt.target?.result;
-          const wb = read(bstr, { type: 'binary' });
-          const ws = wb.Sheets[wb.SheetNames[0]];
-          const rows = utils.sheet_to_json(ws) as any[];
-          generatePreview(rows, newMapping, defaultServices);
-        } catch (err) {
-          alert("Errore durante l'aggiornamento dell'anteprima.");
-        }
-      };
-      reader.onerror = () => alert("Errore durante la lettura del file.");
-      reader.readAsBinaryString(file);
+    if (rawRows.length > 0) {
+      generatePreview(rawRows, newMapping, defaultColleague, defaultTelefonista, defaultService);
     }
   };
 
@@ -222,16 +237,25 @@ function FileImportTab({ leads, services, colleagues = [], activeColleague = '',
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = utils.sheet_to_json(ws) as any[];
 
-      const leadsPayload = rows.map(row => ({
-        name: row[mapping.name] ? String(row[mapping.name]).trim() : '',
-        phone: row[mapping.phone] ? String(row[mapping.phone]).trim() : '',
-        email: row[mapping.email] ? String(row[mapping.email]).trim() : '',
-        company: row[mapping.company] ? String(row[mapping.company]).trim() : '',
-        address: row[mapping.address] ? String(row[mapping.address]).trim() : '',
-        assignedColleague: (row[mapping.assignedColleague] ? String(row[mapping.assignedColleague]).trim() : '') || defaultColleague,
-        service: row[mapping.service] ? String(row[mapping.service]).trim() : (defaultServices[0] || ''),
-        notes: row[mapping.notes] ? String(row[mapping.notes]).trim() : '',
-      })).filter(r => r.name);
+      const leadsPayload = rows.map(row => {
+        const rowColleague = (row[mapping.assignedColleague] ? String(row[mapping.assignedColleague]).trim() : '') || defaultColleague;
+        const rowTelefonista = (mapping.assignedTelefonista && row[mapping.assignedTelefonista] ? String(row[mapping.assignedTelefonista]).trim() : '') || defaultTelefonista;
+        const rowService = (row[mapping.service] ? String(row[mapping.service]).trim() : '') || defaultService;
+
+        return {
+          name: row[mapping.name] ? String(row[mapping.name]).trim() : '',
+          phone: row[mapping.phone] ? String(row[mapping.phone]).trim() : '',
+          email: row[mapping.email] ? String(row[mapping.email]).trim() : '',
+          company: row[mapping.company] ? String(row[mapping.company]).trim() : '',
+          address: row[mapping.address] ? String(row[mapping.address]).trim() : '',
+          assignedColleague: rowColleague,
+          assignedTelefonista: rowTelefonista,
+          assignedTelefonisti: rowTelefonista ? [rowTelefonista] : [],
+          service: rowService,
+          services: rowService ? [rowService] : [],
+          notes: row[mapping.notes] ? String(row[mapping.notes]).trim() : '',
+        };
+      }).filter(r => r.name);
 
       if (leadsPayload.length === 0) {
         alert("Nessuna riga valida da importare: controlla che la colonna 'Nome / Contatto' sia abbinata correttamente e che il file contenga dei dati.");
@@ -354,25 +378,86 @@ function FileImportTab({ leads, services, colleagues = [], activeColleague = '',
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex flex-col justify-between gap-2 bg-slate-50 border border-slate-200 p-4 rounded-xl">
+          {/* Assegnazioni Predefinite & Gestione Duplicati */}
+          <div className="flex flex-col gap-4">
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-3">
               <div>
-                <h4 className="text-xs font-bold text-slate-700">Assegna Lead a (Predefinito)</h4>
-                <p className="text-[11px] text-slate-500">A quale venditore o telefonista assegnare i contatti senza colonna specifica?</p>
+                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-indigo-600" />
+                  Assegnazioni Predefinite &amp; Tipologia (per contatti senza colonna specifica nel file)
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  I valori scelti qui verranno assegnati automaticamente a tutti i lead importati che non hanno una colonna dedicata nel file.
+                </p>
               </div>
-              <select
-                value={defaultColleague}
-                onChange={e => setDefaultColleague(e.target.value)}
-                className="bg-white border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-800 cursor-pointer"
-              >
-                <option value="">-- Nessuno (Non assegnato) --</option>
-                {colleagues.map(c => (
-                  <option key={c} value={c}>👤 {c}</option>
-                ))}
-              </select>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                {/* Agente Commerciale (Venditore) */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    💼 Agente Commerciale (Venditore)
+                  </label>
+                  <select
+                    value={defaultColleague}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setDefaultColleague(val);
+                      if (rawRows.length > 0) generatePreview(rawRows, mapping, val, defaultTelefonista, defaultService);
+                    }}
+                    className="w-full bg-white border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-800 cursor-pointer"
+                  >
+                    <option value="">-- Nessun Agente (Non assegnato) --</option>
+                    {venditori.map(v => (
+                      <option key={v.id || v.name} value={v.name}>💼 {v.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Telefonista (Ufficio) */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    📞 Telefonista (Ufficio / Call Center)
+                  </label>
+                  <select
+                    value={defaultTelefonista}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setDefaultTelefonista(val);
+                      if (rawRows.length > 0) generatePreview(rawRows, mapping, defaultColleague, val, defaultService);
+                    }}
+                    className="w-full bg-white border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-800 cursor-pointer"
+                  >
+                    <option value="">-- Nessun Telefonista --</option>
+                    {telefonisti.map(t => (
+                      <option key={t.id || t.name} value={t.name}>📞 {t.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Tipologia Trattata */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    🏷️ Tipologia Trattata
+                  </label>
+                  <select
+                    value={defaultService}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setDefaultService(val);
+                      if (rawRows.length > 0) generatePreview(rawRows, mapping, defaultColleague, defaultTelefonista, val);
+                    }}
+                    className="w-full bg-white border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-800 cursor-pointer"
+                  >
+                    <option value="">-- Nessuna Tipologia --</option>
+                    {services.map(s => (
+                      <option key={s} value={s}>🏷️ {s}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
 
-            <div className="flex flex-col justify-between gap-2 bg-slate-50 border border-slate-200 p-4 rounded-xl">
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h4 className="text-xs font-bold text-slate-700">Gestione Duplicati</h4>
                 <p className="text-[11px] text-slate-500">Cosa fare se un contatto ha lo stesso telefono/email di uno già in archivio?</p>
@@ -380,7 +465,7 @@ function FileImportTab({ leads, services, colleagues = [], activeColleague = '',
               <select
                 value={duplicateMode}
                 onChange={e => setDuplicateMode(e.target.value as DuplicateMode)}
-                className="bg-white border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-800 cursor-pointer"
+                className="bg-white border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-800 cursor-pointer min-w-[220px]"
               >
                 <option value="skip">Salta Duplicati (Consigliato)</option>
                 <option value="use_existing">Aggiorna Scheda Esistente</option>
@@ -507,7 +592,7 @@ function FileImportTab({ leads, services, colleagues = [], activeColleague = '',
   );
 }
 
-function ApifyGoogleMapsTab({ onClose }: { onClose: () => void }) {
+function ApifyGoogleMapsTab({ services = [], colleagues = [], colleagueObjects = [], onClose }: { services?: string[]; colleagues?: string[]; colleagueObjects?: Colleague[]; onClose: () => void }) {
   const [apifyToken, setApifyToken] = useState('');
   const [showToken, setShowToken] = useState(false);
   const [isTokenSaved, setIsTokenSaved] = useState(false);
@@ -517,6 +602,18 @@ function ApifyGoogleMapsTab({ onClose }: { onClose: () => void }) {
   const [location, setLocation] = useState('');
   const [keywords, setKeywords] = useState('');
   const [limit, setLimit] = useState('10');
+
+  const venditori = colleagueObjects && colleagueObjects.length > 0
+    ? colleagueObjects.filter(c => c.role === 'venditore')
+    : (colleagues || []).map(c => ({ id: c, name: c, role: 'venditore' as const }));
+
+  const telefonisti = colleagueObjects && colleagueObjects.length > 0
+    ? colleagueObjects.filter(c => c.role === 'telefonista' || !c.role)
+    : (colleagues || []).map(c => ({ id: c, name: c, role: 'telefonista' as const }));
+
+  const [assignedColleague, setAssignedColleague] = useState('');
+  const [assignedTelefonista, setAssignedTelefonista] = useState('');
+  const [service, setService] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
@@ -596,6 +693,9 @@ function ApifyGoogleMapsTab({ onClose }: { onClose: () => void }) {
         locations: location.trim(),
         keywords: keywords.trim(),
         fetch_count: Number(limit) || 10,
+        assignedColleague: assignedColleague || undefined,
+        assignedTelefonista: assignedTelefonista || undefined,
+        service: service || undefined,
       });
 
       if (!startRes.ok || !startRes.runId) {
@@ -767,6 +867,75 @@ function ApifyGoogleMapsTab({ onClose }: { onClose: () => void }) {
               <option value="100">100 Lead Verificati</option>
             </select>
             <p className="text-[10px] text-slate-400 mt-1">Numero target di contatti completi da importare.</p>
+          </div>
+        </div>
+
+        {/* Assegnazione Automatica & Tipologia Lead Estratti */}
+        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+          <div>
+            <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-emerald-600" />
+              Assegnazione Automatica &amp; Tipologia (Opzionale)
+            </h4>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              Abbina direttamente tutti i contatti estratti da Maps a un venditore, un telefonista e una tipologia di interesse.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Agente Venditore */}
+            <div>
+              <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                💼 Assegna ad Agente Commerciale
+              </label>
+              <select
+                value={assignedColleague}
+                onChange={e => setAssignedColleague(e.target.value)}
+                disabled={loading}
+                className="w-full bg-slate-50 border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-800 cursor-pointer focus:bg-white"
+              >
+                <option value="">-- Nessun Agente (Non assegnato) --</option>
+                {venditori.map(v => (
+                  <option key={v.id || v.name} value={v.name}>💼 {v.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Telefonista */}
+            <div>
+              <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                📞 Assegna a Telefonista (Ufficio)
+              </label>
+              <select
+                value={assignedTelefonista}
+                onChange={e => setAssignedTelefonista(e.target.value)}
+                disabled={loading}
+                className="w-full bg-slate-50 border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-800 cursor-pointer focus:bg-white"
+              >
+                <option value="">-- Nessun Telefonista --</option>
+                {telefonisti.map(t => (
+                  <option key={t.id || t.name} value={t.name}>📞 {t.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Tipologia */}
+            <div>
+              <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                🏷️ Tipologia Trattata
+              </label>
+              <select
+                value={service}
+                onChange={e => setService(e.target.value)}
+                disabled={loading}
+                className="w-full bg-slate-50 border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-800 cursor-pointer focus:bg-white"
+              >
+                <option value="">-- Nessuna Tipologia --</option>
+                {services.map(s => (
+                  <option key={s} value={s}>🏷️ {s}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 

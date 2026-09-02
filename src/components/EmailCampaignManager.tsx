@@ -38,6 +38,8 @@ export default function EmailCampaignManager({ onClose, currentUser, onOpenLead 
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [smtpAccounts, setSmtpAccounts] = useState<SmtpAccount[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [selectedServiceFilter, setSelectedServiceFilter] = useState<string>('Tutti');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [sortByTemp, setSortByTemp] = useState(false);
@@ -57,16 +59,18 @@ export default function EmailCampaignManager({ onClose, currentUser, onOpenLead 
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [cRes, tRes, sRes, lRes] = await Promise.all([
+      const [cRes, tRes, sRes, lRes, servRes] = await Promise.all([
         fetch('/api/email-campaigns').then(r => r.json()),
         fetch('/api/email-templates').then(r => r.json()),
         fetch('/api/smtp-accounts').then(r => r.json()),
         fetch('/api/leads').then(r => r.json()),
+        fetch('/api/services').then(r => r.json()).catch(() => []),
       ]);
       setCampaigns(cRes);
       setTemplates(tRes);
       setSmtpAccounts(sRes);
       setLeads(lRes.filter((l: Lead) => l.email));
+      setServices(servRes || []);
     } catch (e: any) {
       console.error('Error fetching campaign data:', e);
       alert('Errore durante il caricamento delle campagne: ' + (e?.message || 'errore sconosciuto'));
@@ -217,7 +221,9 @@ export default function EmailCampaignManager({ onClose, currentUser, onOpenLead 
 
   const filteredLeads = leads.filter(l => {
     const q = leadSearch.toLowerCase();
-    return !q || l.name.toLowerCase().includes(q) || (l.company || '').toLowerCase().includes(q) || (l.email || '').toLowerCase().includes(q);
+    const matchesSearch = !q || l.name.toLowerCase().includes(q) || (l.company || '').toLowerCase().includes(q) || (l.email || '').toLowerCase().includes(q);
+    const matchesService = selectedServiceFilter === 'Tutti' || (l.services && l.services.length > 0 ? l.services.includes(selectedServiceFilter) : l.service === selectedServiceFilter);
+    return matchesSearch && matchesService;
   });
 
   const sortedRecipients = [...recipients].sort((a, b) => {
@@ -413,34 +419,122 @@ export default function EmailCampaignManager({ onClose, currentUser, onOpenLead 
                     Seleziona Destinatari ({selectedLeadIds.length} selezionati)
                   </label>
                   <div className="flex gap-2">
-                    <button onClick={() => setSelectedLeadIds(filteredLeads.map(l => l.id))}
-                      className="text-xs font-bold text-indigo-600 hover:underline cursor-pointer">Tutti</button>
+                    <button onClick={() => setSelectedLeadIds(prev => Array.from(new Set([...prev, ...filteredLeads.map(l => l.id)])))}
+                      className="text-xs font-bold text-indigo-600 hover:underline cursor-pointer" title="Seleziona tutti i lead visualizzati con i filtri correnti">
+                      + Aggiungi filtrati ({filteredLeads.length})
+                    </button>
+                    <span className="text-slate-300">|</span>
+                    <button onClick={() => setSelectedLeadIds(prev => prev.filter(id => !filteredLeads.some(l => l.id === id)))}
+                      className="text-xs font-bold text-slate-500 hover:underline cursor-pointer" title="Deseleziona i lead filtrati">
+                      - Togli filtrati
+                    </button>
+                    <span className="text-slate-300">|</span>
                     <button onClick={() => setSelectedLeadIds([])}
-                      className="text-xs font-bold text-slate-400 hover:underline cursor-pointer">Nessuno</button>
+                      className="text-xs font-bold text-rose-500 hover:underline cursor-pointer">Azzera</button>
                   </div>
                 </div>
 
-                <input type="text" value={leadSearch} onChange={e => setLeadSearch(e.target.value)}
-                  placeholder="Cerca per nome, azienda o email..."
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                {/* Seleziona Rapida per Intera Tipologia */}
+                {services.length > 0 && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                        🏷️ Seleziona Intera Tipologia con 1 Click:
+                      </span>
+                      <span className="text-[10px] text-slate-400">Clicca per aggiungere/togliere tutti</span>
+                    </div>
 
-                <p className="text-xs text-slate-400">Mostrati solo i lead con email. {leads.length} lead con email disponibili.</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {services.map(srv => {
+                        const srvLeads = leads.filter(l => l.services?.includes(srv.name) || l.service === srv.name);
+                        const srvLeadIds = srvLeads.map(l => l.id);
+                        const isAllSelected = srvLeadIds.length > 0 && srvLeadIds.every(id => selectedLeadIds.includes(id));
+                        const isSomeSelected = !isAllSelected && srvLeadIds.some(id => selectedLeadIds.includes(id));
 
-                <div className="border border-slate-200 rounded-2xl overflow-hidden max-h-[400px] overflow-y-auto">
+                        return (
+                          <button
+                            key={srv.id || srv.name}
+                            type="button"
+                            onClick={() => {
+                              if (isAllSelected) {
+                                // Rimuove tutti i lead di questa tipologia
+                                setSelectedLeadIds(prev => prev.filter(id => !srvLeadIds.includes(id)));
+                              } else {
+                                // Aggiunge tutti i lead di questa tipologia
+                                setSelectedLeadIds(prev => Array.from(new Set([...prev, ...srvLeadIds])));
+                              }
+                            }}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer ${
+                              isAllSelected
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                                : isSomeSelected
+                                ? 'bg-indigo-50 text-indigo-700 border-indigo-300'
+                                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                            }`}
+                            title={`${srvLeads.length} lead con email disponibili per ${srv.name}`}
+                          >
+                            <span>{srv.name}</span>
+                            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                              isAllSelected ? 'bg-indigo-800 text-white' : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {srvLeads.length}
+                            </span>
+                            <span className="font-extrabold text-xs">{isAllSelected ? '✓' : '+'}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Filtro Ricerca & Tipologia */}
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <input type="text" value={leadSearch} onChange={e => setLeadSearch(e.target.value)}
+                      placeholder="Cerca per nome, azienda o email..."
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white" />
+                  </div>
+                  {services.length > 0 && (
+                    <select
+                      value={selectedServiceFilter}
+                      onChange={e => setSelectedServiceFilter(e.target.value)}
+                      className="border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-700 bg-white cursor-pointer"
+                    >
+                      <option value="Tutti">Tipologia: Tutte</option>
+                      {services.map(s => (
+                        <option key={s.id || s.name} value={s.name}>{s.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-slate-400">
+                  Mostrati {filteredLeads.length} lead su {leads.length} totali con email disponibili.
+                </p>
+
+                <div className="border border-slate-200 rounded-2xl overflow-hidden max-h-[380px] overflow-y-auto bg-white">
                   {filteredLeads.length === 0 ? (
-                    <div className="p-4 text-center text-slate-400 text-sm">Nessun lead trovato</div>
+                    <div className="p-4 text-center text-slate-400 text-sm">Nessun lead trovato con i filtri attuali</div>
                   ) : (
                     filteredLeads.map(lead => {
                       const checked = selectedLeadIds.includes(lead.id);
+                      const tipologia = lead.services && lead.services.length > 0 ? lead.services.join(', ') : (lead.service || '');
                       return (
                         <label key={lead.id}
-                          className={`flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-slate-100 last:border-0 transition-colors ${checked ? 'bg-indigo-50' : 'hover:bg-slate-50'}`}>
+                          className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer border-b border-slate-100 last:border-0 transition-colors ${checked ? 'bg-indigo-50' : 'hover:bg-slate-50'}`}>
                           <input type="checkbox" checked={checked} onChange={() => toggleLead(lead.id)}
                             className="w-4 h-4 accent-indigo-600 shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-slate-800 truncate">{lead.name}</p>
-                            {lead.company && <p className="text-xs text-slate-400 truncate">{lead.company}</p>}
-                            <p className="text-xs text-indigo-600 truncate">{lead.email}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-bold text-slate-800 truncate">{lead.name}</p>
+                              {tipologia && (
+                                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full truncate max-w-[140px]" title={tipologia}>
+                                  🏷️ {tipologia}
+                                </span>
+                              )}
+                            </div>
+                            {lead.company && <p className="text-[11px] text-slate-400 truncate">{lead.company}</p>}
+                            <p className="text-[11px] text-indigo-600 truncate">{lead.email}</p>
                           </div>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
                             lead.status === 'Interessato' ? 'bg-emerald-50 text-emerald-700' :

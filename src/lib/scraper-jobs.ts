@@ -13,6 +13,9 @@ export interface ScraperJob {
   currentBatchSize: number;
   roundsDone: number;
   collectedLeads: ParsedGoogleMapsLead[];
+  assignedColleague?: string;
+  assignedTelefonista?: string;
+  customService?: string;
   result?: {
     status: 'DONE' | 'FAILED' | 'RUNNING';
     ok?: boolean;

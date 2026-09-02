@@ -3,7 +3,7 @@
 > 🟢 **STATO SISTEMA: ONLINE E ATTIVO SU HOSTINGER**  
 > **URL PUBBLICO**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **REPOSITORY GITHUB (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **VERSIONE ATTUALE**: 4.3 (Sistema Stelline/Recensioni Agenti Verificato Live + Nuova Tab Recensioni Super Admin + Cascade Delete + Fix Password)
+> **VERSIONE ATTUALE**: 4.4 (Selezione Intere Tipologie Campagne Email + Assegnazione Agente, Telefonista e Tipologia all'Importazione CSV/Apify)
 
 ---
 

@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 4.3 (Sistema Stelline/Recensioni Agenti Verificato Live + Nuova Tab Recensioni Super Admin + Cascade Delete + Fix Password)  
+> **Versione**: 4.4 (Selezione Intere Tipologie Campagne Email + Assegnazione Agente, Telefonista e Tipologia all'Importazione CSV/Apify)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
@@ -78,10 +78,32 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
   - **JOIN filtrata negli endpoint**: `GET /api/appointments` e `GET /api/visit-reports` utilizzano `INNER JOIN leads` per garantire al 100% che nessun appuntamento orfano possa mai essere inviato agli agenti.
 
 ### 2.3 Reset Password Istantaneo Admin (Senza Doppio Check)
-- **Problema risolto**: In precedenza, quando l'amministratore cambiava o impostava la password di un collaboratore, il frontend apriva un popup `window.prompt` chiedendo nuovamente la password admin e il server la confrontava con una variabile d'ambiente statica, causando l'errore *"Password amministratore errata"*.
-- **Comportamento nuovo**: Qualsiasi amministratore autenticato (`admin`) digita direttamente la nuova password del collaboratore e clicca **"Salva Password"** o crea il profilo con password: l'operazione viene eseguita all'istante senza alcun popup o doppio controllo.
+- Quando un amministratore imposta una password per un collega in `SuperAdminArea.tsx`, l'operazione è istantanea con 1 solo click.
+- Viene inviata la password desiderata direttamente ad un endpoint sicuro che la hasha e la salva, senza richiedere conferme ripetute.
+- La password appena salvata viene mostrata a video all'amministratore con un pulsante rapido per copiarla o renderla visibile con l'icona dell'occhio.
 
-### 2.4 Rinomina Globale "Servizi" ➔ "Tipologie"
+### 2.4 Selezione Intere Tipologie per Campagne Email & Assegnazione Automatica all'Importazione (v4.4)
+- **Selezione Rapida Intere Tipologie nelle Campagne Marketing (`EmailCampaignManager.tsx`)**:
+  - Superata la selezione manuale riga per riga: caricamento dinamico di tutte le tipologie aziendali (`/api/services`).
+  - **Pill/Badge Interattivi a 1-Click**: Ciascuna tipologia dispone di un pulsante rapido che mostra il numero esatto di lead con email disponibili per quel servizio (es. *Fotovoltaico Residenziale (24)*, *Comunità Energetica (11)*). Con un solo click è possibile selezionare o deselezionare in blocco tutti i destinatari appartenenti a quell'intera tipologia (`lead.services?.includes(tip) || lead.service === tip`).
+  - **Filtro Tipologia Avanzato**: Menu a tendina dedicato per filtrare la tabella contatti per tipologia specifica, combinabile con la barra di ricerca testuale per nome/azienda/email.
+  - **Azioni Cumulative Rapide**: Pulsanti per `+ Aggiungi filtrati (N)`, `- Togli filtrati` e `Azzera` selezione.
+  - **Badge Grafico Tipologia**: Ogni scheda lead nella lista destinatari mostra un badge visivo colorato indicante le tipologie di interesse del cliente.
+- **Assegnazione Automatica Multi-Ruolo & Tipologia all'Importazione Lead (`ImportLeadsModal.tsx`)**:
+  - **Importazione Excel / CSV (`FileImportTab`)**:
+    - Sezione predefinita con 3 selettori dedicati per le righe prive di colonne specifiche:
+      1. 💼 **Agente Commerciale (Venditore)**
+      2. 📞 **Telefonista (Ufficio / Call Center)**
+      3. 🏷️ **Tipologia Trattata**
+    - Mappatura automatica intelligente delle colonne file per `assignedColleague`, `assignedTelefonista` e `service`.
+    - Anteprima in tempo reale che riflette istantaneamente i valori predefiniti scelti nei selettori.
+    - Aggiornamento backend `/api/leads/import` con inserimento e aggiornamento completo dei campi `assignedColleague`, `assignedTelefonisti` (JSON array) e `services` (JSON array).
+  - **Google Maps Scraper Apify (`ApifyGoogleMapsTab`)**:
+    - Aggiunto box di configurazione con gli stessi 3 selettori (Agente Commerciale, Telefonista Ufficio, Tipologia Trattata) prima dell'avvio della ricerca su Maps.
+    - Invio a `/api/leads/apify-search` e memorizzazione nei job asincroni Apify.
+    - All'estrazione dei contatti arricchiti con telefono ed email da Maps, il server applica e registra direttamente i valori scelti su ciascun nuovo lead generato nel database.
+
+### 2.5 Rinomina Globale "Servizi" ➔ "Tipologie"
 - **Terminologia Allineata al Business**: Sostituita la dicitura *Servizi* con *Tipologie* (es. agricolo, edile, industriale, residenziale).
 - **Adeguamento UI Completo**:
   - Dropdown toolbar: `Tipologia (Tutte)`.
