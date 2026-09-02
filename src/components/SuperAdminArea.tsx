@@ -42,16 +42,21 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [cols, servs, revs] = await Promise.all([
+      const [cols, servs] = await Promise.all([
         api.getColleagues(),
         api.getServices(),
-        api.getAdminReviews(),
       ]);
       setColleagues(cols);
       setServices(servs);
-      setReviews(revs);
     } catch (err) {
       console.error('Error fetching admin data:', err);
+    }
+
+    try {
+      const revs = await api.getAdminReviews();
+      setReviews(revs || []);
+    } catch (err) {
+      console.error('Error fetching reviews:', err);
     } finally {
       setLoading(false);
     }

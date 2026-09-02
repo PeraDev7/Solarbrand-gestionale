@@ -26425,7 +26425,8 @@ app.post("/api/reviews/submit", async (req, res) => {
   }
   res.json({ ok: true });
 });
-app.get("/api/admin/reviews", requireAdmin, async (req, res) => {
+app.get("/api/admin/reviews", async (req, res) => {
+  if (!await requireAdmin(req, res)) return;
   const reviews = await db.all(`
     SELECT r.*, l.name as leadName, l.email as leadEmail
     FROM reviews r
