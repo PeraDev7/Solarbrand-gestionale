@@ -643,3 +643,21 @@ export async function migrateAssignments(): Promise<void> {
   }
 }
 
+/**
+ * Pulisce tutti i record orfani (appuntamenti, schede visita, task, storico, allegati)
+ * appartenenti a lead che sono stati eliminati dal CRM.
+ */
+export async function cleanupOrphanRecords(): Promise<void> {
+  try {
+    await db.run('DELETE FROM appointments WHERE leadId NOT IN (SELECT id FROM leads)');
+    await db.run('DELETE FROM visit_reports WHERE leadId NOT IN (SELECT id FROM leads)');
+    await db.run('DELETE FROM tasks WHERE leadId NOT IN (SELECT id FROM leads)');
+    await db.run('DELETE FROM history WHERE leadId NOT IN (SELECT id FROM leads)');
+    await db.run('DELETE FROM lead_attachments WHERE leadId NOT IN (SELECT id FROM leads)');
+    await db.run('DELETE FROM email_campaign_recipients WHERE leadId NOT IN (SELECT id FROM leads)');
+    console.log('[cleanupOrphanRecords] Pulizia record orfani lead completata con successo');
+  } catch (e: any) {
+    console.error('[cleanupOrphanRecords] Errore pulizia orfani:', e?.message || e);
+  }
+}
+

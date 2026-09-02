@@ -6,7 +6,7 @@ import { createServer as createViteServer } from 'vite';
 import nodemailer from 'nodemailer';
 import { randomBytes } from 'crypto';
 import { google } from 'googleapis';
-import { db, randomUUID, parseJsonField, seedDemoDataIfNeeded, initDb, migrateAssignments } from './src/lib/database.js';
+import { db, randomUUID, parseJsonField, seedDemoDataIfNeeded, initDb, migrateAssignments, cleanupOrphanRecords } from './src/lib/database.js';
 import { hashPassword, verifyPassword } from './src/lib/passwords.js';
 import { buildSearchStrings, buildLocationQuery, buildActorInput, startApifyRun, parseGoogleMapsItems } from './src/lib/google-maps-scraper.js';
 import { createJob, getJob, updateJob } from './src/lib/scraper-jobs.js';
@@ -88,8 +88,8 @@ async function requireAdmin(req: express.Request, res: express.Response): Promis
   return true;
 }
 
-// Initialize database (MySQL or SQLite) then seed demo data if needed, then migrate assignments
-(async () => { await initDb(); await seedDemoDataIfNeeded(); await migrateAssignments(); })();
+// Initialize database (MySQL or SQLite) then seed demo data if needed, migrate assignments and clean orphan records
+(async () => { await initDb(); await seedDemoDataIfNeeded(); await migrateAssignments(); await cleanupOrphanRecords(); })();
 
 // Flush WAL into the main .db file and close cleanly on exit, otherwise
 // recent writes (e.g. saved settings) can sit only in app.db-wal and be
@@ -299,6 +299,12 @@ app.put('/api/leads/:id', async (req, res) => {
 
 app.delete('/api/leads/:id', async (req, res) => {
   const { id } = req.params;
+  await db.run('DELETE FROM appointments WHERE leadId = ?', [id]);
+  await db.run('DELETE FROM visit_reports WHERE leadId = ?', [id]);
+  await db.run('DELETE FROM tasks WHERE leadId = ?', [id]);
+  await db.run('DELETE FROM history WHERE leadId = ?', [id]);
+  await db.run('DELETE FROM lead_attachments WHERE leadId = ?', [id]);
+  await db.run('DELETE FROM email_campaign_recipients WHERE leadId = ?', [id]);
   await db.run('DELETE FROM leads WHERE id = ?', [id]);
   res.json({ ok: true });
 });
@@ -483,13 +489,16 @@ app.delete('/api/services/:id', async (req, res) => {
 // ── APPOINTMENTS ──
 app.get('/api/appointments', async (req, res) => {
   const { vendorName } = req.query;
-  let query = 'SELECT * FROM appointments';
+  let query = `
+    SELECT a.* FROM appointments a
+    INNER JOIN leads l ON l.id = a.leadId
+  `;
   let params: any[] = [];
   if (vendorName) {
-    query += ' WHERE LOWER(TRIM(assignedVendor)) = LOWER(TRIM(?))';
+    query += ' WHERE LOWER(TRIM(a.assignedVendor)) = LOWER(TRIM(?))';
     params = [vendorName as string];
   }
-  query += ' ORDER BY dateTime ASC';
+  query += ' ORDER BY a.dateTime ASC';
   res.json(await db.all(query, params));
 });
 
@@ -547,17 +556,17 @@ app.delete('/api/appointments/:id', async (req, res) => {
 // ── VISIT REPORTS ──
 app.get('/api/visit-reports', async (req, res) => {
   const { vendorName, leadId } = req.query;
-  let query = 'SELECT * FROM visit_reports';
+  let query = 'SELECT vr.* FROM visit_reports vr INNER JOIN leads l ON l.id = vr.leadId';
   let params: any[] = [];
   const conditions: string[] = [];
 
-  if (vendorName) { conditions.push('LOWER(TRIM(vendorName)) = LOWER(TRIM(?))'); params.push(vendorName); }
-  if (leadId) { conditions.push('leadId = ?'); params.push(leadId); }
+  if (vendorName) { conditions.push('LOWER(TRIM(vr.vendorName)) = LOWER(TRIM(?))'); params.push(vendorName); }
+  if (leadId) { conditions.push('vr.leadId = ?'); params.push(leadId); }
 
   if (conditions.length > 0) {
     query += ' WHERE ' + conditions.join(' AND ');
   }
-  query += ' ORDER BY visitDate DESC';
+  query += ' ORDER BY vr.visitDate DESC';
   res.json(await db.all(query, params));
 });
 

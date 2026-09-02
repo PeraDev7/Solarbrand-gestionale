@@ -24893,6 +24893,19 @@ async function migrateAssignments() {
     console.error("[migrateAssignments] Errore:", e?.message || e);
   }
 }
+async function cleanupOrphanRecords() {
+  try {
+    await db.run("DELETE FROM appointments WHERE leadId NOT IN (SELECT id FROM leads)");
+    await db.run("DELETE FROM visit_reports WHERE leadId NOT IN (SELECT id FROM leads)");
+    await db.run("DELETE FROM tasks WHERE leadId NOT IN (SELECT id FROM leads)");
+    await db.run("DELETE FROM history WHERE leadId NOT IN (SELECT id FROM leads)");
+    await db.run("DELETE FROM lead_attachments WHERE leadId NOT IN (SELECT id FROM leads)");
+    await db.run("DELETE FROM email_campaign_recipients WHERE leadId NOT IN (SELECT id FROM leads)");
+    console.log("[cleanupOrphanRecords] Pulizia record orfani lead completata con successo");
+  } catch (e) {
+    console.error("[cleanupOrphanRecords] Errore pulizia orfani:", e?.message || e);
+  }
+}
 
 // src/lib/google-maps-scraper.ts
 var GOOGLE_MAPS_ACTOR_ID = "compass~crawler-google-places";
@@ -25063,6 +25076,7 @@ async function requireAdmin(req, res) {
   await initDb();
   await seedDemoDataIfNeeded();
   await migrateAssignments();
+  await cleanupOrphanRecords();
 })();
 function shutdownGracefully() {
   try {
@@ -25242,6 +25256,12 @@ app.put("/api/leads/:id", async (req, res) => {
 });
 app.delete("/api/leads/:id", async (req, res) => {
   const { id } = req.params;
+  await db.run("DELETE FROM appointments WHERE leadId = ?", [id]);
+  await db.run("DELETE FROM visit_reports WHERE leadId = ?", [id]);
+  await db.run("DELETE FROM tasks WHERE leadId = ?", [id]);
+  await db.run("DELETE FROM history WHERE leadId = ?", [id]);
+  await db.run("DELETE FROM lead_attachments WHERE leadId = ?", [id]);
+  await db.run("DELETE FROM email_campaign_recipients WHERE leadId = ?", [id]);
   await db.run("DELETE FROM leads WHERE id = ?", [id]);
   res.json({ ok: true });
 });
@@ -25401,13 +25421,16 @@ app.delete("/api/services/:id", async (req, res) => {
 });
 app.get("/api/appointments", async (req, res) => {
   const { vendorName } = req.query;
-  let query = "SELECT * FROM appointments";
+  let query = `
+    SELECT a.* FROM appointments a
+    INNER JOIN leads l ON l.id = a.leadId
+  `;
   let params = [];
   if (vendorName) {
-    query += " WHERE LOWER(TRIM(assignedVendor)) = LOWER(TRIM(?))";
+    query += " WHERE LOWER(TRIM(a.assignedVendor)) = LOWER(TRIM(?))";
     params = [vendorName];
   }
-  query += " ORDER BY dateTime ASC";
+  query += " ORDER BY a.dateTime ASC";
   res.json(await db.all(query, params));
 });
 app.post("/api/appointments", async (req, res) => {
@@ -25455,21 +25478,21 @@ app.delete("/api/appointments/:id", async (req, res) => {
 });
 app.get("/api/visit-reports", async (req, res) => {
   const { vendorName, leadId } = req.query;
-  let query = "SELECT * FROM visit_reports";
+  let query = "SELECT vr.* FROM visit_reports vr INNER JOIN leads l ON l.id = vr.leadId";
   let params = [];
   const conditions = [];
   if (vendorName) {
-    conditions.push("LOWER(TRIM(vendorName)) = LOWER(TRIM(?))");
+    conditions.push("LOWER(TRIM(vr.vendorName)) = LOWER(TRIM(?))");
     params.push(vendorName);
   }
   if (leadId) {
-    conditions.push("leadId = ?");
+    conditions.push("vr.leadId = ?");
     params.push(leadId);
   }
   if (conditions.length > 0) {
     query += " WHERE " + conditions.join(" AND ");
   }
-  query += " ORDER BY visitDate DESC";
+  query += " ORDER BY vr.visitDate DESC";
   res.json(await db.all(query, params));
 });
 app.post("/api/visit-reports", async (req, res) => {
