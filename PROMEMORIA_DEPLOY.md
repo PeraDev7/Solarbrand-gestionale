@@ -3,7 +3,7 @@
 > 🟢 **STATO SISTEMA: ONLINE E ATTIVO SU HOSTINGER**  
 > **URL PUBBLICO**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **REPOSITORY GITHUB (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **VERSIONE ATTUALE**: 4.2 (Cancellazione a Cascata Lead + Pulizia Automatica Record Orfani + Fix Password Admin + Tipologie + Restrizioni)
+> **VERSIONE ATTUALE**: 4.3 (Sistema Stelline/Recensioni Agenti Verificato Live + Nuova Tab Recensioni Super Admin + Cascade Delete + Fix Password)
 
 ---
 
@@ -54,6 +54,27 @@ Tutti gli account preesistenti (tranne Erika) hanno come password iniziale: **`S
 | **Visibilità Lead** | Tutti | Solo assegnati nominalmente O per Tipologia | Solo appuntamenti/lead assegnati |
 
 *💡 **Gestione Team**: Da Erika (`eroikaphoto@gmail.com`), clicca su **Gestione Utenti / Team** in alto per aggiungere o modificare colleghi. Il sistema mostra la conferma visiva in chiaro della password impostata e permette di visualizzarla con l'icona occhio.*
+
+---
+
+## ⭐ SISTEMA STELLINE & RECENSIONI AGENTI (v4.3)
+
+1. **Trigger Automatico su Chiusura Lead**:
+   - Quando un lead passa allo stato **`Chiuso con successo`** (da un qualsiasi altro stato) e possiede un'email, il server genera istantaneamente un token univoco (UUID) e una riga nella tabella `reviews`.
+   - Viene inviata una email automatica al cliente usando il template `review_request` (`tpl-review-request`), valorizzando i placeholder `{nome}`, `{azienda}`, `{agente}` e `{link_recensione}`.
+2. **Pagina Pubblica di Valutazione (`/recensione?token=...`)**:
+   - Pagina responsive con selezione a 5 stelle interattive (etichette: *Scarso, Sufficiente, Buono, Molto Buono, Eccellente!*).
+   - Campo opzionale per commento/feedback testuale del cliente.
+   - Protezione **monouso**: dopo l'invio (`usedAt` valorizzato), il link non può più essere riutilizzato e mostra una schermata di ringraziamento.
+3. **Calcolo Automatico Medie in Tempo Reale**:
+   - All'invio della recensione (`POST /api/reviews/submit`), il server calcola la media `AVG(rating)` e il totale recensioni `COUNT(*)` per l'agente commerciale indicato.
+   - Aggiorna istantaneamente i campi `avgRating` e `reviewCount` nella tabella `colleagues`.
+   - Il badge ⭐ con media e conteggio appare sia nel portale agente (`VendorApp.tsx`), sia nell'elenco operatori admin (`SuperAdminArea.tsx`).
+4. **Pannello Gestione Recensioni nel Portale Admin**:
+   - Nel modale **Gestione Team**, accessibile da Super Admin, è presente la tab **"Recensioni"** con:
+     - Scorecard riassuntiva per agente (media numerica + stelline grafiche + conteggio).
+     - Lista di tutte le recensioni con nome cliente, agente associato, voto in stelle, commento in corsivo, data invio e data compilazione.
+     - Badge di stato: *"In attesa di risposta"* per le recensioni inviate e non ancora compilate.
 
 ---
 

@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 4.2 (Cancellazione a Cascata Lead + Pulizia Automatica Record Orfani + Fix Password Admin + Tipologie + Restrizioni)  
+> **Versione**: 4.3 (Sistema Stelline/Recensioni Agenti Verificato Live + Nuova Tab Recensioni Super Admin + Cascade Delete + Fix Password)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
@@ -18,6 +18,7 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
 - **Gestione Completa Database Lead**: Creazione manuale nuovi lead, importazione massiva da Excel/CSV, riassegnazione a telefonisti e agenti commerciali. Cancellazione sicura a cascata (rimuove istantaneamente appuntamenti, schede visita, task, storico e allegati associati al lead).
 - **Tipologie Trattate dall'Azienda (ex Servizi)**: Configurazione e gestione delle tipologie di intervento (es. *Fotovoltaico Residenziale*, *Agricolo*, *Edile*, *Pompa di Calore*, *Comunità Energetica*).
 - **Gestione Team & Collaboratori**: Creazione account, assegnazione ruoli (`admin`, `telefonista`, `venditore`), assegnazione tipologie gestite e **reset password istantaneo 1-click** (senza fastidiosi prompt o doppi controlli password).
+- **Monitoraggio Recensioni e Valutazioni Clienti**: Tab dedicata *"Recensioni"* per consultare i voti a 5 stelle, i commenti lasciati dai clienti e le medie aggregate per ciascun venditore.
 - **Campagne Email Marketing & Tracking**: Creazione ed invio di campagne email massive tramite account SMTP aziendale (`info@solarbrandkg.it`), monitoraggio aperture pixel 1x1, click 302 e risposte automatiche via IMAP.
 - **Template Email & SMS Aziendali**: Creazione, modifica e gestione dei modelli di testo per comunicazioni rapide e automatiche.
 - **Configurazioni Server**: Gestione account SMTP e caselle IMAP con Inbox Scanner.
@@ -29,7 +30,7 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
 - **Assegnazione Agente Commerciale**: Possono assegnare un venditore a un lead o sopralluogo.
 - **Restrizioni di Sicurezza**: NON possono creare nuovi lead, NON possono importare file Excel/CSV, NON possono creare/modificare template, NON inviano SMS e NON hanno accesso a campagne o impostazioni server.
 
-### 1.3 Portale Agenti Commerciali / Venditori (es. Marco Rossi, Stefano Bianchi, Alessandro Neri, ecc.)
+### 1.3 Portale Agenti Commerciali / Venditori (es. Marco Rossi, Stefano Bianchi, Alessandro Neri, Fabio Test, ecc.)
 - **Vista Appuntamenti Personali & Rating**: Vedono esclusivamente la lista sopralluoghi ed i lead affidati a loro, con il badge **Media Stelline (valutazione clienti)** in evidenza. Gli appuntamenti di lead cancellati vengono rimossi automaticamente in tempo reale.
 - **Sincronizzazione Google Calendar Personale (OAuth 2.0)**:
   - Ciascun agente commerciale collega autonomamente il proprio account Google personale/aziendale cliccando su *"Collega Google Calendar"*.
@@ -42,9 +43,28 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
 
 ---
 
-## 2. Funzionalità Avanzate & Aggiornamenti Recenti (v4.2)
+## 2. Funzionalità Avanzate & Aggiornamenti Recenti (v4.3)
 
-### 2.1 Cancellazione a Cascata & Pulizia Automatica Record Orfani
+### 2.1 Sistema Stelline & Recensioni Agenti (Verificato Live End-to-End)
+- **Flusso Automatico su Chiusura Contratto**:
+  - Quando un lead viene impostato sullo stato **`Chiuso con successo`** (e ha un indirizzo email), il backend genera in modo trasparente un record univoco con token crittografico nella tabella `reviews`.
+  - Viene spedita in tempo reale una mail tramite SMTP usando il template `review_request` contenente il link personalizzato `https://crm.solarbrandkg.it/recensione?token=UUID`.
+- **Interfaccia Web Recensioni Pubblica (`/recensione?token=...`)**:
+  - Interfaccia dedicata, mobile-first, con sistema di valutazione a 5 stelle grafiche (hover e selezione animati con rating: *Scarso*, *Sufficiente*, *Buono*, *Molto Buono*, *Eccellente!*).
+  - Box commento facoltativo per feedback qualitativo.
+  - **Protezione Anti-Abuso Monouso**: Una volta completata la valutazione, il token viene marcato con data/ora (`usedAt`) e successivi accessi mostrano una pagina di ringraziamento, impedendo voti multipli.
+- **Ricalcolo Automatico Medie Venditori**:
+  - Al click di invio (`POST /api/reviews/submit`), il server esegue la media ponderata `AVG(rating)` e il conteggio `COUNT(*)` per l'agente commerciale assegnato e aggiorna istantaneamente i campi `avgRating` e `reviewCount` nella tabella `colleagues`.
+  - La media aggiornata compare subito nel badge stelline del portale agente e in tutta la piattaforma.
+- **Nuovo Tab "Recensioni" nell'Area Super Admin (`SuperAdminArea.tsx`)**:
+  - Navigazione a schede (`Team & Tipologie` / `Recensioni [N]`).
+  - Scorecard grafiche in testata con media decimale, stelline dorate e totale recensioni per ciascun venditore.
+  - Elenco analitico di tutte le recensioni con cliente, email, agente assegnato, voto, commento esteso, data di invio e data di compilazione (oppure badge *"In attesa di risposta"*).
+- **Nuovo Endpoint API Protetto**:
+  - `GET /api/admin/reviews` (riservato al ruolo `admin`) con `LEFT JOIN leads` per recuperare l'anagrafica completa dei clienti recensori.
+  - Metodo client dedicato `api.getAdminReviews()` in `src/lib/api.ts`.
+
+### 2.2 Cancellazione a Cascata & Pulizia Automatica Record Orfani
 - **Problema individuato**: Quando l'amministratore cancellava un lead dalla tabella `leads`, gli appuntamenti precedentemente fissati per quel cliente rimanevano orfani nella tabella `appointments` (e nelle schede visita / task), continuando ad apparire nella dashboard dell'agente assegnato.
 - **Soluzione applicata**:
   - **DELETE a cascata in `server.ts`**: All'eliminazione di un lead, vengono automaticamente rimossi tutti i record collegati (`appointments`, `visit_reports`, `tasks`, `history`, `lead_attachments`, `email_campaign_recipients`).
