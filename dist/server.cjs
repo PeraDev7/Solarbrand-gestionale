@@ -24316,7 +24316,6 @@ var require_express2 = __commonJS({
 var import_express = __toESM(require_express2(), 1);
 var import_path2 = __toESM(require("path"), 1);
 var import_fs2 = __toESM(require("fs"), 1);
-var import_vite = require("vite");
 var import_nodemailer = __toESM(require("nodemailer"), 1);
 var import_crypto3 = require("crypto");
 var import_googleapis = require("googleapis");
@@ -26875,11 +26874,15 @@ setInterval(async () => {
 }, 10 * 60 * 1e3);
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
-    const vite = await (0, import_vite.createServer)({
-      server: { middlewareMode: true },
-      appType: "spa"
-    });
-    app.use(vite.middlewares);
+    try {
+      const { createServer: createViteServer } = await import("vite");
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa"
+      });
+      app.use(vite.middlewares);
+    } catch {
+    }
   } else {
     const distPath = import_path2.default.join(process.cwd(), "dist");
     app.use(import_express.default.static(distPath));
