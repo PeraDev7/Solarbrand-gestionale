@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 4.5 (Restrizioni Permessi Telefonisti: Assegnazione Solo ad Agenti e Isolamento Calendario Appuntamenti Personali)  
+> **Versione**: 4.6 (Gestione Duplicati Apify Google Maps + Restrizioni Scheda Lead per Agenti Commerciali: Solo Nota, No Email, No SMS, No Cancellazione Lead, Appuntamento Auto-Assegnato)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---

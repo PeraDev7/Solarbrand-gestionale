@@ -101,10 +101,15 @@ export default function AppointmentsList({ googleToken, leads, services, colleag
   const vendors = allColleagueObjs.filter(c => c.role === 'venditore');
 
   const filteredAppointments = appointments.filter(app => {
-    // Un telefonista (non admin) NON può vedere gli appuntamenti degli altri telefonisti!
+    // Un telefonista (non admin) vede gli appuntamenti creati da lui o relativi ai lead a lui assegnati
     if (isTelefonista) {
-      if (activeColleague && app.colleague && app.colleague.trim().toLowerCase() !== activeColleague.trim().toLowerCase()) {
-        return false;
+      if (activeColleague) {
+        const isMyAppointment = app.colleague && app.colleague.trim().toLowerCase() === activeColleague.trim().toLowerCase();
+        const matchedLead = leads.find(l => l.id === app.leadId);
+        const isMyLead = matchedLead?.assignedTelefonisti && matchedLead.assignedTelefonisti.some((t: string) => t.trim().toLowerCase() === activeColleague.trim().toLowerCase());
+        if (!isMyAppointment && !isMyLead) {
+          return false;
+        }
       }
     } else if (activeColleague && !showAllTelephonists) {
       if (app.colleague && app.colleague !== activeColleague) return false;

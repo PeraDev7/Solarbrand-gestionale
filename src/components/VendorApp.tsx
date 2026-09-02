@@ -347,6 +347,7 @@ export default function VendorApp({ session, onLogout }: Props) {
             activeColleague={session.name}
             colleagues={[session.name]}
             googleToken={null}
+            sessionRole="venditore"
             onClose={() => setSelectedLead(null)}
             onUpdateLead={(updated) => {
               setSelectedLead(updated);

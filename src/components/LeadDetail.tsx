@@ -32,6 +32,7 @@ export default function LeadDetail({
   onDeleteLead,
   onTriggerGoogleLogin 
 }: LeadDetailProps) {
+  const isVenditore = sessionRole === 'venditore';
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [smsTemplates, setSmsTemplates] = useState<SmsTemplate[]>([]);
@@ -39,11 +40,11 @@ export default function LeadDetail({
 
   const [newNote, setNewNote] = useState('');
   const [newStatus, setNewStatus] = useState<Lead['status']>(lead.status);
-  const [actionType, setActionType] = useState<'call' | 'note'>('call');
+  const [actionType, setActionType] = useState<'call' | 'note'>(isVenditore ? 'note' : 'call');
   const [savingAction, setSavingAction] = useState(false);
 
   const [calendarType, setCalendarType] = useState<'visit' | 'call'>('visit');
-  const [calendarVendor, setCalendarVendor] = useState('');
+  const [calendarVendor, setCalendarVendor] = useState(isVenditore ? activeColleague : '');
   const [calendarTitle, setCalendarTitle] = useState(`Sopralluogo: ${lead.name}`);
   const [calendarDateTime, setCalendarDateTime] = useState('');
   const [calendarNotes, setCalendarNotes] = useState('');
@@ -134,10 +135,12 @@ export default function LeadDetail({
     api.getSmsTemplates().then(setSmsTemplates).catch(console.error);
     api.getColleagues().then(cols => {
       setAllColleagueObjs(cols);
-      const v = cols.filter((c: any) => c.role === 'venditore');
-      if (v.length > 0) setCalendarVendor(v[0].name);
+      if (!isVenditore) {
+        const v = cols.filter((c: any) => c.role === 'venditore');
+        if (v.length > 0) setCalendarVendor(v[0].name);
+      }
     }).catch(console.error);
-  }, []);
+  }, [isVenditore]);
 
   useEffect(() => {
     let active = true;
@@ -207,20 +210,31 @@ export default function LeadDetail({
     setCalendarSuccess(false);
 
     try {
+      const vendorToAssign = isVenditore ? activeColleague : (calendarType === 'visit' ? calendarVendor : '');
+      const typeToAssign = isVenditore ? 'visit' : calendarType;
+
       await api.createAppointment({
         leadId: lead.id,
         leadName: lead.name,
         colleague: activeColleague,
-        assignedVendor: calendarType === 'visit' ? calendarVendor : '',
+        assignedVendor: vendorToAssign,
         dateTime: calendarDateTime,
         title: calendarTitle,
         notes: calendarNotes,
-        appointmentType: calendarType,
+        appointmentType: typeToAssign,
       });
 
       setCalendarSuccess(true);
       setCalendarDateTime('');
       setCalendarNotes('');
+
+      // Ricarica la cronologia del lead per visualizzare subito la nota automatica dell'appuntamento
+      try {
+        const items = await api.getHistory(lead.id);
+        setHistory(items);
+      } catch (hErr) {
+        console.error('Error reloading history after appointment:', hErr);
+      }
     } catch (e: any) {
       setCalendarError('Errore: ' + e.message);
     } finally {
@@ -290,13 +304,15 @@ export default function LeadDetail({
           )}
         </div>
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="text-slate-400 hover:text-rose-600 p-2 rounded-xl hover:bg-rose-50 transition-colors cursor-pointer"
-            title="Elimina Lead"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {!isVenditore && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="text-slate-400 hover:text-rose-600 p-2 rounded-xl hover:bg-rose-50 transition-colors cursor-pointer"
+              title="Elimina Lead"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
           <button 
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
@@ -307,16 +323,16 @@ export default function LeadDetail({
       </div>
 
       {/* Quick Action Contacts */}
-      <div className="p-4 border-b border-slate-100 bg-white grid grid-cols-2 gap-2">
+      <div className={`p-4 border-b border-slate-100 bg-white ${isVenditore ? 'flex' : 'grid grid-cols-2 gap-2'}`}>
         <a 
           href={`tel:${lead.phone}`}
-          className="flex items-center justify-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 py-2.5 px-3 rounded-xl text-xs font-bold transition-all"
+          className="flex-1 flex items-center justify-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 py-2.5 px-3 rounded-xl text-xs font-bold transition-all"
         >
           <Phone className="w-4 h-4" />
           Chiama
         </a>
 
-        {sessionRole !== 'telefonista' && (lead.phone ? (
+        {!isVenditore && sessionRole !== 'telefonista' && (lead.phone ? (
           <div className="relative">
             <button
               onClick={() => setShowSmsDropdown(!showSmsDropdown)}
@@ -373,12 +389,14 @@ export default function LeadDetail({
         >
           Task
         </button>
-        <button
-          onClick={() => setActiveTab('email')}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'email' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-700'}`}
-        >
-          Email
-        </button>
+        {!isVenditore && (
+          <button
+            onClick={() => setActiveTab('email')}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'email' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Email
+          </button>
+        )}
         <button
           onClick={() => setActiveTab('attachments')}
           className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'attachments' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-700'}`}
@@ -398,12 +416,14 @@ export default function LeadDetail({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Registra Attività</span>
                 <div className="flex bg-slate-200 p-0.5 rounded-lg text-[10px] font-bold">
-                  <button 
-                    onClick={() => setActionType('call')}
-                    className={`px-2.5 py-1 rounded-md transition-all ${actionType === 'call' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500'}`}
-                  >
-                    Chiamata
-                  </button>
+                  {!isVenditore && (
+                    <button 
+                      onClick={() => setActionType('call')}
+                      className={`px-2.5 py-1 rounded-md transition-all ${actionType === 'call' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500'}`}
+                    >
+                      Chiamata
+                    </button>
+                  )}
                   <button 
                     onClick={() => setActionType('note')}
                     className={`px-2.5 py-1 rounded-md transition-all ${actionType === 'note' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500'}`}
@@ -511,41 +531,45 @@ export default function LeadDetail({
         {/* TAB 2: SCHEDULE APPOINTMENT */}
         {activeTab === 'schedule' && (
           <div className="space-y-3">
-            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Fissa Appuntamento / Sopralluogo</span>
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+              {isVenditore ? 'Fissa Sopralluogo per Me Stesso' : 'Fissa Appuntamento / Sopralluogo'}
+            </span>
 
-            <div>
-              <label className="text-[11px] font-semibold text-slate-500 block mb-1">Tipo di Appuntamento *</label>
-              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCalendarType('visit');
-                    setCalendarTitle(`Sopralluogo: ${lead.name}`);
-                  }}
-                  className={`py-2 px-3 text-xs font-extrabold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                    calendarType === 'visit'
-                      ? 'bg-amber-500 text-white shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <span>🏠 Sopralluogo Agente</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCalendarType('call');
-                    setCalendarTitle(`Richiamo telefonico: ${lead.name}`);
-                  }}
-                  className={`py-2 px-3 text-xs font-extrabold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                    calendarType === 'call'
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <span>📞 Richiamo Ufficio</span>
-                </button>
+            {!isVenditore && (
+              <div>
+                <label className="text-[11px] font-semibold text-slate-500 block mb-1">Tipo di Appuntamento *</label>
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCalendarType('visit');
+                      setCalendarTitle(`Sopralluogo: ${lead.name}`);
+                    }}
+                    className={`py-2 px-3 text-xs font-extrabold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      calendarType === 'visit'
+                        ? 'bg-amber-500 text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>🏠 Sopralluogo Agente</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCalendarType('call');
+                      setCalendarTitle(`Richiamo telefonico: ${lead.name}`);
+                    }}
+                    className={`py-2 px-3 text-xs font-extrabold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      calendarType === 'call'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>📞 Richiamo Ufficio</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             <div>
               <label className="text-[11px] font-semibold text-slate-500 block mb-1">Titolo Evento</label>
@@ -557,24 +581,30 @@ export default function LeadDetail({
               />
             </div>
 
-            {calendarType === 'visit' && (
-              <div>
-                <label className="text-[11px] font-semibold text-slate-500 block mb-1">Agente Commerciale Assegnato *</label>
-                <select
-                  value={calendarVendor}
-                  onChange={e => setCalendarVendor(e.target.value)}
-                  className="w-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-extrabold rounded-xl p-2.5 cursor-pointer"
-                >
-                  {allColleagueObjs.filter(c => c.role === 'venditore').map(v => (
-                    <option key={v.id} value={v.name}>{v.name}</option>
-                  ))}
-                  {allColleagueObjs.filter(c => c.role === 'venditore').length === 0 && (
-                    colleagues.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))
-                  )}
-                </select>
+            {isVenditore ? (
+              <div className="bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-xs font-bold text-amber-900 flex items-center gap-2">
+                <span>💼 Assegnato automaticamente a te: <strong>{activeColleague}</strong></span>
               </div>
+            ) : (
+              calendarType === 'visit' && (
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-500 block mb-1">Agente Commerciale Assegnato *</label>
+                  <select
+                    value={calendarVendor}
+                    onChange={e => setCalendarVendor(e.target.value)}
+                    className="w-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-extrabold rounded-xl p-2.5 cursor-pointer"
+                  >
+                    {allColleagueObjs.filter(c => c.role === 'venditore').map(v => (
+                      <option key={v.id} value={v.name}>{v.name}</option>
+                    ))}
+                    {allColleagueObjs.filter(c => c.role === 'venditore').length === 0 && (
+                      colleagues.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))
+                    )}
+                  </select>
+                </div>
+              )
             )}
 
             <div>
@@ -630,7 +660,7 @@ export default function LeadDetail({
         )}
 
         {/* TAB 4: SEND EMAIL */}
-        {activeTab === 'email' && (
+        {!isVenditore && activeTab === 'email' && (
           <SendEmailForm 
             lead={lead}
             onClose={() => setActiveTab('history')}

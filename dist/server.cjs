@@ -25268,6 +25268,11 @@ app.put("/api/leads/:id", async (req, res) => {
   res.json(updated);
 });
 app.delete("/api/leads/:id", async (req, res) => {
+  const colleagueId = req.colleagueId;
+  const requester = colleagueId ? await db.get("SELECT * FROM colleagues WHERE id = ?", [colleagueId]) : null;
+  if (requester && requester.role === "venditore") {
+    return res.status(403).json({ error: "Gli agenti commerciali non possono eliminare i lead" });
+  }
   const { id } = req.params;
   await db.run("DELETE FROM appointments WHERE leadId = ?", [id]);
   await db.run("DELETE FROM visit_reports WHERE leadId = ?", [id]);
@@ -25447,8 +25452,8 @@ app.get("/api/appointments", async (req, res) => {
     params.push(vendorName);
   }
   if (requester && requester.role === "telefonista") {
-    whereClauses.push("LOWER(TRIM(a.colleague)) = LOWER(TRIM(?))");
-    params.push(requester.name);
+    whereClauses.push("(LOWER(TRIM(a.colleague)) = LOWER(TRIM(?)) OR l.assignedTelefonisti LIKE ?)");
+    params.push(requester.name, `%"${requester.name}"%`);
   }
   if (whereClauses.length > 0) {
     query += " WHERE " + whereClauses.join(" AND ");
@@ -25465,6 +25470,16 @@ app.post("/api/appointments", async (req, res) => {
     INSERT INTO appointments (id, leadId, leadName, colleague, assignedVendor, dateTime, title, notes, appointmentType, googleEventId, visitStatus, completed, createdAt)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'false', ?)
   `, [id, leadId, leadName, colleague, assignedVendor, dateTime, title, notes, appointmentType, googleEventId, now]);
+  try {
+    const apptDateFormatted = new Date(dateTime).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    const histNote = `[APPUNTAMENTO FISSATO] ${title || "Nuovo Appuntamento"} in data ${apptDateFormatted}${assignedVendor ? ` | Agente: ${assignedVendor}` : ""}${notes ? ` - Note: ${notes}` : ""}`;
+    await db.run(`
+      INSERT INTO history (id, leadId, timestamp, colleague, note, statusAfterCall, type)
+      VALUES (?, ?, ?, ?, ?, 'Nuovo', 'note')
+    `, [randomUUID(), leadId, now, colleague || assignedVendor || "Sistema", histNote]);
+  } catch (hErr) {
+    console.error("[appointments/create] Errore inserimento storico:", hErr);
+  }
   const created = await db.get("SELECT * FROM appointments WHERE id = ?", [id]);
   await syncAppointmentToVendorCalendar(created);
   res.status(201).json(await db.get("SELECT * FROM appointments WHERE id = ?", [id]));
