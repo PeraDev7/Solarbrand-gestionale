@@ -1647,6 +1647,17 @@ app.post('/api/reviews/submit', async (req, res) => {
   res.json({ ok: true });
 });
 
+// GET all reviews (admin only)
+app.get('/api/admin/reviews', requireAdmin, async (req, res) => {
+  const reviews = await db.all(`
+    SELECT r.*, l.name as leadName, l.email as leadEmail
+    FROM reviews r
+    LEFT JOIN leads l ON l.id = r.leadId
+    ORDER BY r.createdAt DESC
+  `, []) as any[];
+  res.json(reviews);
+});
+
 
 // ── EMAIL CAMPAIGNS ──
 app.get('/api/email-campaigns', async (req, res) => {

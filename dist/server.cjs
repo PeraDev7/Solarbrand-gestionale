@@ -26425,6 +26425,15 @@ app.post("/api/reviews/submit", async (req, res) => {
   }
   res.json({ ok: true });
 });
+app.get("/api/admin/reviews", requireAdmin, async (req, res) => {
+  const reviews = await db.all(`
+    SELECT r.*, l.name as leadName, l.email as leadEmail
+    FROM reviews r
+    LEFT JOIN leads l ON l.id = r.leadId
+    ORDER BY r.createdAt DESC
+  `, []);
+  res.json(reviews);
+});
 app.get("/api/email-campaigns", async (req, res) => {
   const campaigns = await db.all("SELECT * FROM email_campaigns ORDER BY createdAt DESC", []);
   res.json(campaigns);
