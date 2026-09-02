@@ -3,7 +3,7 @@
 > 🟢 **STATO SISTEMA: ONLINE E ATTIVO SU HOSTINGER**  
 > **URL PUBBLICO**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **REPOSITORY GITHUB (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **VERSIONE ATTUALE**: 4.0 (Tipologie Trattate + Restrizioni Ruolo Telefonista & Permessi Super Admin)
+> **VERSIONE ATTUALE**: 4.1 (Fix Reset Password Diretto Admin senza Doppio Check + Tipologie Trattate + Restrizioni Telefonista)
 
 ---
 

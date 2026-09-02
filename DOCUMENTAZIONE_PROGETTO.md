@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 4.0 (Rinomina Servizi in Tipologie + Restrizioni Ruolo Telefonista & Permessi Super Admin)  
+> **Versione**: 4.1 (Fix Reset Password Diretto Admin senza Doppio Check + Tipologie Trattate + Restrizioni Telefonista)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
@@ -17,7 +17,7 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
 ### 1.1 Portale Super Admin (es. Erika — `eroikaphoto@gmail.com`)
 - **Gestione Completa Database Lead**: Creazione manuale nuovi lead, importazione massiva da Excel/CSV, riassegnazione a telefonisti e agenti commerciali.
 - **Tipologie Trattate dall'Azienda (ex Servizi)**: Configurazione e gestione delle tipologie di intervento (es. *Fotovoltaico Residenziale*, *Agricolo*, *Edile*, *Pompa di Calore*, *Comunità Energetica*).
-- **Gestione Team & Collaboratori**: Creazione account, assegnazione ruoli (`admin`, `telefonista`, `venditore`), assegnazione tipologie gestite e reset password visibile in chiaro.
+- **Gestione Team & Collaboratori**: Creazione account, assegnazione ruoli (`admin`, `telefonista`, `venditore`), assegnazione tipologie gestite e **reset password istantaneo 1-click** (senza fastidiosi prompt o doppi controlli password).
 - **Campagne Email Marketing & Tracking**: Creazione ed invio di campagne email massive tramite account SMTP aziendale (`info@solarbrandkg.it`), monitoraggio aperture pixel 1x1, click 302 e risposte automatiche via IMAP.
 - **Template Email & SMS Aziendali**: Creazione, modifica e gestione dei modelli di testo per comunicazioni rapide e automatiche.
 - **Configurazioni Server**: Gestione account SMTP e caselle IMAP con Inbox Scanner.
@@ -42,9 +42,13 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
 
 ---
 
-## 2. Funzionalità Avanzate & Aggiornamenti Recenti (v4.0)
+## 2. Funzionalità Avanzate & Aggiornamenti Recenti (v4.1)
 
-### 2.1 Rinomina Globale "Servizi" ➔ "Tipologie"
+### 2.1 Reset Password Istantaneo Admin (Senza Doppio Check)
+- **Problema risolto**: In precedenza, quando l'amministratore cambiava o impostava la password di un collaboratore, il frontend apriva un popup `window.prompt` chiedendo nuovamente la password admin e il server la confrontava con una variabile d'ambiente statica, causando l'errore *"Password amministratore errata"*.
+- **Comportamento nuovo**: L'amministratore autenticato (`admin`) digita direttamente la nuova password del collaboratore e clicca **"Salva Password"** o crea il profilo con password: l'operazione viene eseguita all'istante senza alcun popup o doppio controllo.
+
+### 2.2 Rinomina Globale "Servizi" ➔ "Tipologie"
 - **Terminologia Allineata al Business**: Sostituita la dicitura *Servizi* con *Tipologie* (es. agricolo, edile, industriale, residenziale).
 - **Adeguamento UI Completo**:
   - Dropdown toolbar: `Tipologia (Tutte)`.
@@ -53,7 +57,7 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
   - Gestione collaboratori (`SuperAdminArea.tsx`): `Tipologie Trattate dall'Azienda`.
   - Report e PDF (`ReportsView.tsx`): filtri e tabelle con intestazione `Tipologie`.
 
-### 2.2 Restrizioni di Ruolo & Sicurezza Operatori Call Center
+### 2.3 Restrizioni di Ruolo & Sicurezza Operatori Call Center
 - **Pulsanti Amministrativi Riservati**:
   - Solo il Super Admin può visualizzare i pulsanti: *Template Email*, *Template SMS*, *Server SMTP*, *Server IMAP*, *Campagne Email Massive*, *Importa Lead* e *Nuovo Lead*.
 - **Scheda Lead**: Rimosso il pulsante/tendina SMS per i profili con ruolo `telefonista`. Mantenuto il modulo invio email con selezione dei template aziendali.
