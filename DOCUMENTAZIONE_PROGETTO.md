@@ -147,6 +147,27 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
 - **Verifica Territoriale Reale**: Lo scraper estrae indirizzo completo, CAP e prefisso telefonico (es. `045` per Verona centro/lago e `0442` per Legnago/Bassa Veronese).
 - **Arricchimento Contatti e Anti-Duplicati**: Navigazione automatizzata dei siti web aziendali per estrarre sia email che telefono validati.
 
+### 2.6 Gestione Duplicati Intelligente in Importazione Apify Google Maps (v4.6)
+- Aggiunta la modalità di gestione duplicati (`skip`, `use_existing`, `create_new`) anche nella tab Apify, speculare all'importazione file Excel/CSV.
+- Il backend analizza sia l'indirizzo email che il numero di telefono (normalizzato senza spazi e con prefisso internazionale uniforme) rispetto ai lead già archiviati.
+- Feedback visivo con contatori statistici (*Nuovi Importati*, *Aggiornati*, *Duplicati Saltati*) e accordion con il dettaglio nominativo riga per riga.
+
+### 2.7 Restrizioni Scheda Lead per Agenti Commerciali (v4.6 - v4.7)
+- **Eliminazione Lead Inibita**: Rimosso il pulsante cestino in alto a destra nella scheda e blocco 403 Forbidden su `DELETE /api/leads/:id` se il richiedente è un venditore.
+- **Invio SMS Disabilitato**: Rimosso il pulsante rapido SMS per gli agenti.
+- **Tab Email Nascosta**: Gli agenti non vedono la tab per inviare email promozionali/comunicazioni standard (riservata ad admin e telefonisti).
+- **Attività in Storico**: Niente opzione "Chiamata"; gli agenti possono inserire solo "Nota".
+- **Fissa Appuntamento con Auto-Assegnazione**: L'agente può fissare sopralluoghi, ma il sistema lo assegna in automatico esclusivamente a se stesso.
+- **Sincronizzazione Automatica Google Calendar**: L'evento viene creato all'istante anche sul calendario Google personale dell'agente se collegato.
+- **Visibilità Appuntamenti per Telefonisti**: I telefonisti vedono nel proprio calendario gli appuntamenti creati sugli stessi lead assegnati a loro.
+
+### 2.8 Visibilità Completa e Diretta di Telefono ed Email in Schede e Calendari (v4.7)
+- **Scheda Dettaglio Lead (`LeadDetail`)**: Posizionati subito sotto al nome del contatto due elementi in evidenza:
+  - 📞 **Telefono** in chiaro con link cliccabile `tel:` per avviare subito la chiamata.
+  - ✉️ **Email** in chiaro con link cliccabile `mailto:` per avviare il client di posta predefinito.
+- **Dashboard Agenti (`VendorApp`)**: Sia nelle card appuntamenti che nei lead associati sono sempre visibili e cliccabili numero di telefono ed email.
+- **Calendario Appuntamenti (`AppointmentsList`)**: In ogni card appuntamento sono riportati direttamente sia il telefono che l'email del cliente con badge dedicati.
+
 ---
 
 ## 3. Schema Database (18 Tabelle)

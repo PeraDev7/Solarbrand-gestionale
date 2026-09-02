@@ -3,7 +3,7 @@
 > 🟢 **STATO SISTEMA: ONLINE E ATTIVO SU HOSTINGER**  
 > **URL PUBBLICO**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **REPOSITORY GITHUB (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **VERSIONE ATTUALE**: 4.6 (Gestione Duplicati Apify Maps + Restrizioni Scheda Lead per Agenti Commerciali)
+> **VERSIONE ATTUALE**: 4.7 (Gestione Duplicati Apify Maps + Restrizioni Scheda Lead per Agenti + Visibilità Telefono ed Email Ovunque)
 
 ---
 
@@ -38,16 +38,17 @@ Tutti gli account preesistenti (tranne Erika) hanno come password iniziale: **`S
 
 ---
 
-## 🛡️ MATRICE PERMESSI RUOLI (v4.6)
+## 🛡️ MATRICE PERMESSI RUOLI (v4.7)
 
 | Funzionalità / Azione | Super Admin (`admin`) | Telefonista (`telefonista`) | Venditore (`venditore`) |
 |---|:---:|:---:|:---:|
+| **Visibilità Telefono ed Email in Scheda Lead** | ✅ (link `tel:` e `mailto:`) | ✅ (link `tel:` e `mailto:`) | ✅ (link `tel:` e `mailto:`) |
 | **Importazione Massiva Lead (Excel/CSV/Apify)** | ✅ | ❌ | ❌ |
 | **Creazione Manuale Nuovo Lead** | ✅ | ❌ | ❌ |
 | **Cancellazione Lead (Cestino)** | ✅ | ✅ | ❌ (bloccato UI & backend 403) |
 | **Invio SMS Rapido da Scheda** | ✅ | ❌ | ❌ (rimosso pulsante SMS) |
 | **Tab Email da Scheda Lead** | ✅ | ✅ (con scelta template) | ❌ (nascosta) |
-| **Fissa Appuntamento da Scheda Lead** | ✅ (sceglie agente/tipo) | ✅ (assegna ad agente) | ✅ (assegnato in automatico solo a se stesso) |
+| **Fissa Appuntamento da Scheda Lead** | ✅ (sceglie agente/tipo) | ✅ (assegna ad agente) | ✅ (auto-assegnato a sé stesso + sync Google) |
 | **Registra Attività in Storico** | ✅ (Chiamata o Nota) | ✅ (Chiamata o Nota) | Solo Nota (Chiamata rimossa) |
 | **Note Automatiche Appuntamenti in Storico** | ✅ | ✅ | ✅ (visibile nella cronologia del lead) |
 | **Creazione / Modifica Template Email** | ✅ | ❌ | ❌ |
