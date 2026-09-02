@@ -61,6 +61,7 @@ Tutti gli account preesistenti (tranne Erika) hanno come password iniziale: **`S
 
 1. **Trigger Automatico su Chiusura Lead**:
    - Quando un lead passa allo stato **`Chiuso con successo`** (da un qualsiasi altro stato) e possiede un'email, il server genera istantaneamente un token univoco (UUID) e una riga nella tabella `reviews`.
+   - **Persistenza Dati Cliente**: Nome ed email del lead vengono salvati direttamente nella tabella `reviews` al momento della generazione. Se il lead viene successivamente eliminato dal CRM, **la recensione e il nome del cliente rimangono per sempre conservati** nella scheda recensioni senza mai mostrare codici o perdere i dati.
    - Viene inviata una email automatica al cliente usando il template `review_request` (`tpl-review-request`), valorizzando i placeholder `{nome}`, `{azienda}`, `{agente}` e `{link_recensione}`.
 2. **Pagina Pubblica di Valutazione (`/recensione?token=...`)**:
    - Pagina responsive con selezione a 5 stelle interattive (etichette: *Scarso, Sufficiente, Buono, Molto Buono, Eccellente!*).
@@ -73,8 +74,10 @@ Tutti gli account preesistenti (tranne Erika) hanno come password iniziale: **`S
 4. **Pannello Gestione Recensioni nel Portale Admin**:
    - Nel modale **Gestione Team**, accessibile da Super Admin, è presente la tab **"Recensioni"** con:
      - Scorecard riassuntiva per agente (media numerica + stelline grafiche + conteggio).
-     - Lista di tutte le recensioni con nome cliente, agente associato, voto in stelle, commento in corsivo, data invio e data compilazione.
+     - Lista di tutte le recensioni con nome cliente permanente, agente associato, voto in stelle, commento in corsivo, data invio e data compilazione.
      - Badge di stato: *"In attesa di risposta"* per le recensioni inviate e non ancora compilate.
+     - **Pulsante Cestino Singolo**: Consente all'admin di eliminare singole recensioni errate o di spam con ricalcolo immediato della media dell'agente.
+     - **Pulsante "Azzera Recensioni Test"**: Per ripulire rapidamente tutte le recensioni di prova e azzerare le medie.
 
 ---
 
