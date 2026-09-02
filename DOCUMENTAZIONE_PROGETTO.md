@@ -48,6 +48,7 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
 ### 2.1 Sistema Stelline & Recensioni Agenti (Verificato Live End-to-End)
 - **Flusso Automatico su Chiusura Contratto**:
   - Quando un lead viene impostato sullo stato **`Chiuso con successo`** (e ha un indirizzo email), il backend genera in modo trasparente un record univoco con token crittografico nella tabella `reviews`.
+  - **Persistenza Dati Cliente**: Nome ed email del cliente vengono archiviati direttamente nella riga della recensione (`leadName`, `leadEmail`). **Se il lead viene in seguito cancellato dal CRM, la recensione RESTA intatta** con il nome e l'email del cliente leggibili, senza mai mostrare codici ID o perdere le valutazioni.
   - Viene spedita in tempo reale una mail tramite SMTP usando il template `review_request` contenente il link personalizzato `https://crm.solarbrandkg.it/recensione?token=UUID`.
 - **Interfaccia Web Recensioni Pubblica (`/recensione?token=...`)**:
   - Interfaccia dedicata, mobile-first, con sistema di valutazione a 5 stelle grafiche (hover e selezione animati con rating: *Scarso*, *Sufficiente*, *Buono*, *Molto Buono*, *Eccellente!*).
@@ -56,26 +57,31 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
 - **Ricalcolo Automatico Medie Venditori**:
   - Al click di invio (`POST /api/reviews/submit`), il server esegue la media ponderata `AVG(rating)` e il conteggio `COUNT(*)` per l'agente commerciale assegnato e aggiorna istantaneamente i campi `avgRating` e `reviewCount` nella tabella `colleagues`.
   - La media aggiornata compare subito nel badge stelline del portale agente e in tutta la piattaforma.
-- **Nuovo Tab "Recensioni" nell'Area Super Admin (`SuperAdminArea.tsx`)**:
+- **Nuovo Tab "Recensioni" nell'Area Super Admin (`SuperAdminArea.tsx`) per TUTTI gli Admin**:
+  - Accessibile a **qualsiasi utente con ruolo `admin`** (Erika, Fabio Slemer o qualsiasi amministratore futuro), non ristretto a un singolo account.
   - Navigazione a schede (`Team & Tipologie` / `Recensioni [N]`).
   - Scorecard grafiche in testata con media decimale, stelline dorate e totale recensioni per ciascun venditore.
   - Elenco analitico di tutte le recensioni con cliente, email, agente assegnato, voto, commento esteso, data di invio e data di compilazione (oppure badge *"In attesa di risposta"*).
-- **Nuovo Endpoint API Protetto**:
-  - `GET /api/admin/reviews` (riservato al ruolo `admin`) con `LEFT JOIN leads` per recuperare l'anagrafica completa dei clienti recensori.
-  - Metodo client dedicato `api.getAdminReviews()` in `src/lib/api.ts`.
+  - **Eliminazione Singola Recensione con Cestino**: Ciascun admin può eliminare una recensione specifica (con ricalcolo automatico immediato delle medie dell'agente).
+  - **Pulsante "Azzera Recensioni Test"**: Per ripulire in blocco tutte le recensioni di prova e resettare le statistiche a zero.
+- **Nuovi Endpoint API Protetti**:
+  - `GET /api/admin/reviews`: lista completa delle recensioni con fallback e join.
+  - `DELETE /api/admin/reviews/:id`: cancellazione singola recensione con ricalcolo statistiche agente.
+  - `DELETE /api/admin/reviews`: svuotamento totale recensioni e reset medie agenti.
+  - Metodi client dedicati `api.getAdminReviews()`, `api.deleteAdminReview(id)` e `api.clearAllReviews()` in `src/lib/api.ts`.
 
 ### 2.2 Cancellazione a Cascata & Pulizia Automatica Record Orfani
 - **Problema individuato**: Quando l'amministratore cancellava un lead dalla tabella `leads`, gli appuntamenti precedentemente fissati per quel cliente rimanevano orfani nella tabella `appointments` (e nelle schede visita / task), continuando ad apparire nella dashboard dell'agente assegnato.
 - **Soluzione applicata**:
-  - **DELETE a cascata in `server.ts`**: All'eliminazione di un lead, vengono automaticamente rimossi tutti i record collegati (`appointments`, `visit_reports`, `tasks`, `history`, `lead_attachments`, `email_campaign_recipients`).
+  - **DELETE a cascata in `server.ts`**: All'eliminazione di un lead, vengono automaticamente rimossi tutti i record collegati (`appointments`, `visit_reports`, `tasks`, `history`, `lead_attachments`, `email_campaign_recipients`), **mantenendo invece le recensioni e le valutazioni dei clienti** per preservare la reputazione storica degli agenti.
   - **Funzione `cleanupOrphanRecords()` all'avvio**: All'avvio del server viene eseguita una query di bonifica che elimina retroattivamente tutti i record orfani già presenti nel database.
   - **JOIN filtrata negli endpoint**: `GET /api/appointments` e `GET /api/visit-reports` utilizzano `INNER JOIN leads` per garantire al 100% che nessun appuntamento orfano possa mai essere inviato agli agenti.
 
-### 2.2 Reset Password Istantaneo Admin (Senza Doppio Check)
+### 2.3 Reset Password Istantaneo Admin (Senza Doppio Check)
 - **Problema risolto**: In precedenza, quando l'amministratore cambiava o impostava la password di un collaboratore, il frontend apriva un popup `window.prompt` chiedendo nuovamente la password admin e il server la confrontava con una variabile d'ambiente statica, causando l'errore *"Password amministratore errata"*.
-- **Comportamento nuovo**: L'amministratore autenticato (`admin`) digita direttamente la nuova password del collaboratore e clicca **"Salva Password"** o crea il profilo con password: l'operazione viene eseguita all'istante senza alcun popup o doppio controllo.
+- **Comportamento nuovo**: Qualsiasi amministratore autenticato (`admin`) digita direttamente la nuova password del collaboratore e clicca **"Salva Password"** o crea il profilo con password: l'operazione viene eseguita all'istante senza alcun popup o doppio controllo.
 
-### 2.3 Rinomina Globale "Servizi" ➔ "Tipologie"
+### 2.4 Rinomina Globale "Servizi" ➔ "Tipologie"
 - **Terminologia Allineata al Business**: Sostituita la dicitura *Servizi* con *Tipologie* (es. agricolo, edile, industriale, residenziale).
 - **Adeguamento UI Completo**:
   - Dropdown toolbar: `Tipologia (Tutte)`.
@@ -84,12 +90,12 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
   - Gestione collaboratori (`SuperAdminArea.tsx`): `Tipologie Trattate dall'Azienda`.
   - Report e PDF (`ReportsView.tsx`): filtri e tabelle con intestazione `Tipologie`.
 
-### 2.4 Restrizioni di Ruolo & Sicurezza Operatori Call Center
+### 2.5 Restrizioni di Ruolo & Sicurezza Operatori Call Center
 - **Pulsanti Amministrativi Riservati**:
-  - Solo il Super Admin può visualizzare i pulsanti: *Template Email*, *Template SMS*, *Server SMTP*, *Server IMAP*, *Campagne Email Massive*, *Importa Lead* e *Nuovo Lead*.
+  - Solo gli utenti con ruolo Super Admin possono visualizzare i pulsanti: *Template Email*, *Template SMS*, *Server SMTP*, *Server IMAP*, *Campagne Email Massive*, *Importa Lead* e *Nuovo Lead*.
 - **Scheda Lead**: Rimosso il pulsante/tendina SMS per i profili con ruolo `telefonista`. Mantenuto il modulo invio email con selezione dei template aziendali.
 
-### 2.3 Doppia Assegnazione Lead (Telefonisti Multipli + Agente Singolo)
+### 2.6 Doppia Assegnazione Lead (Telefonisti Multipli + Agente Singolo)
 - **Nuovo campo DB `assignedTelefonisti` (JSON Array)**: Memorizza l'elenco dei telefonisti assegnati. `assignedColleague` mantiene l'agente commerciale venditore.
 - **Migrazione Automatica Idempotente (`migrateAssignments()`)**: All'avvio del server, i lead esistenti che avevano un telefonista in `assignedColleague` sono stati migrati automaticamente nel nuovo array JSON, preservando i venditori.
 - **Interfaccia `LeadModal.tsx` Rinnovata**:
