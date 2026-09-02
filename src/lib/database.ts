@@ -339,6 +339,8 @@ export async function initDb() {
   await q(`CREATE TABLE IF NOT EXISTS reviews (
     id         VARCHAR(36) PRIMARY KEY,
     leadId     TEXT DEFAULT '',
+    leadName   TEXT DEFAULT '',
+    leadEmail  TEXT DEFAULT '',
     vendorName TEXT DEFAULT '',
     rating     INT DEFAULT 5,
     comment    TEXT DEFAULT '',
@@ -436,6 +438,9 @@ export async function initDb() {
   await addCol('visit_reports', 'quoteDeliveryMethod',  "TEXT DEFAULT ''");
   await addCol('visit_reports', 'quoteFileName',        "TEXT DEFAULT ''");
   await addCol('visit_reports', 'quoteFileData',        'LONGTEXT DEFAULT NULL');
+
+  await addCol('reviews', 'leadName',  "TEXT DEFAULT ''");
+  await addCol('reviews', 'leadEmail', "TEXT DEFAULT ''");
   await addCol('visit_reports', 'quoteDeliveredAt',     "TEXT DEFAULT ''");
 
   await addCol('email_templates',            'templateType', "TEXT DEFAULT 'custom'");

@@ -24635,6 +24635,8 @@ async function initDb() {
   await q(`CREATE TABLE IF NOT EXISTS reviews (
     id         VARCHAR(36) PRIMARY KEY,
     leadId     TEXT DEFAULT '',
+    leadName   TEXT DEFAULT '',
+    leadEmail  TEXT DEFAULT '',
     vendorName TEXT DEFAULT '',
     rating     INT DEFAULT 5,
     comment    TEXT DEFAULT '',
@@ -24722,6 +24724,8 @@ async function initDb() {
   await addCol("visit_reports", "quoteDeliveryMethod", "TEXT DEFAULT ''");
   await addCol("visit_reports", "quoteFileName", "TEXT DEFAULT ''");
   await addCol("visit_reports", "quoteFileData", "LONGTEXT DEFAULT NULL");
+  await addCol("reviews", "leadName", "TEXT DEFAULT ''");
+  await addCol("reviews", "leadEmail", "TEXT DEFAULT ''");
   await addCol("visit_reports", "quoteDeliveredAt", "TEXT DEFAULT ''");
   await addCol("email_templates", "templateType", "TEXT DEFAULT 'custom'");
   await addCol("email_campaigns", "sendDelay", "INT DEFAULT 3");
@@ -25226,10 +25230,12 @@ app.put("/api/leads/:id", async (req, res) => {
         const token = randomUUID();
         const reviewId = randomUUID();
         const vendor = assignedColleague || existing.assignedColleague || "Consulente SolarBrand";
+        const customerName = name || company || "Cliente";
+        const customerEmail = email ? email.toLowerCase() : "";
         await db.run(`
-          INSERT INTO reviews (id, leadId, vendorName, rating, comment, token, usedAt, createdAt)
-          VALUES (?, ?, ?, 5, '', ?, '', ?)
-        `, [reviewId, id, vendor, token, now]);
+          INSERT INTO reviews (id, leadId, leadName, leadEmail, vendorName, rating, comment, token, usedAt, createdAt)
+          VALUES (?, ?, ?, ?, ?, 5, '', ?, '', ?)
+        `, [reviewId, id, customerName, customerEmail, vendor, token, now]);
         const protocol = req.headers["x-forwarded-proto"] || req.protocol;
         const host = req.get("host");
         const reviewLink = `${protocol}://${host}/recensione?token=${token}`;
@@ -26428,12 +26434,34 @@ app.post("/api/reviews/submit", async (req, res) => {
 app.get("/api/admin/reviews", async (req, res) => {
   if (!await requireAdmin(req, res)) return;
   const reviews = await db.all(`
-    SELECT r.*, l.name as leadName, l.email as leadEmail
+    SELECT r.*, 
+           COALESCE(NULLIF(r.leadName, ''), l.name, 'Cliente rimosso') as leadName,
+           COALESCE(NULLIF(r.leadEmail, ''), l.email, '') as leadEmail
     FROM reviews r
     LEFT JOIN leads l ON l.id = r.leadId
     ORDER BY r.createdAt DESC
   `, []);
   res.json(reviews);
+});
+app.delete("/api/admin/reviews/:id", async (req, res) => {
+  if (!await requireAdmin(req, res)) return;
+  const { id } = req.params;
+  const rev = await db.get("SELECT * FROM reviews WHERE id = ?", [id]);
+  if (!rev) return res.status(404).json({ error: "Recensione non trovata" });
+  await db.run("DELETE FROM reviews WHERE id = ?", [id]);
+  if (rev.vendorName) {
+    const stats = await db.get('SELECT AVG(rating) as avgR, COUNT(*) as cnt FROM reviews WHERE vendorName = ? AND usedAt != ""', [rev.vendorName]);
+    const avgRating = stats?.avgR ? Math.round(Number(stats.avgR) * 10) / 10 : 0;
+    const reviewCount = stats?.cnt || 0;
+    await db.run("UPDATE colleagues SET avgRating = ?, reviewCount = ? WHERE name = ?", [avgRating, reviewCount, rev.vendorName]);
+  }
+  res.json({ ok: true });
+});
+app.delete("/api/admin/reviews", async (req, res) => {
+  if (!await requireAdmin(req, res)) return;
+  await db.run("DELETE FROM reviews");
+  await db.run("UPDATE colleagues SET avgRating = 0, reviewCount = 0");
+  res.json({ ok: true });
 });
 app.get("/api/email-campaigns", async (req, res) => {
   const campaigns = await db.all("SELECT * FROM email_campaigns ORDER BY createdAt DESC", []);

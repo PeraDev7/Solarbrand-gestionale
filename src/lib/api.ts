@@ -143,5 +143,7 @@ export const api = {
 
   // Reviews
   getAdminReviews: () => request<any[]>('GET', '/api/admin/reviews'),
+  deleteAdminReview: (id: string) => request<any>('DELETE', `/api/admin/reviews/${id}`),
+  clearAllReviews: () => request<any>('DELETE', '/api/admin/reviews'),
 };
 

@@ -165,6 +165,28 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
     }
   };
 
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!confirm('Eliminare definitivamente questa recensione?')) return;
+    try {
+      await api.deleteAdminReview(reviewId);
+      await fetchData();
+      onUpdate();
+    } catch (err: any) {
+      alert(err.message || 'Errore eliminazione recensione');
+    }
+  };
+
+  const handleClearAllReviews = async () => {
+    if (!confirm('Sei sicuro di voler eliminare tutte le recensioni di test e azzerare le medie degli agenti?')) return;
+    try {
+      await api.clearAllReviews();
+      await fetchData();
+      onUpdate();
+    } catch (err: any) {
+      alert(err.message || 'Errore azzeramento recensioni');
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 font-sans">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -249,16 +271,30 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
                 </div>
 
                 {/* Review list */}
-                <h3 className="font-extrabold text-slate-700 text-sm flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-slate-400" />
-                  Tutte le recensioni ricevute ({reviews.filter(r => r.usedAt).length}/{reviews.length} compilate)
-                </h3>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-extrabold text-slate-700 text-sm flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-slate-400" />
+                    Tutte le recensioni ricevute ({reviews.filter(r => r.usedAt).length}/{reviews.length} compilate)
+                  </h3>
+                  {reviews.length > 0 && (
+                    <button
+                      onClick={handleClearAllReviews}
+                      className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer ml-auto"
+                      title="Cancella tutte le recensioni e azzera le medie"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Azzera Recensioni Test
+                    </button>
+                  )}
+                </div>
 
                 {reviews.map(rev => (
                   <div key={rev.id} className={`bg-white border rounded-2xl p-4 space-y-2 ${rev.usedAt ? 'border-slate-200' : 'border-dashed border-slate-200 opacity-60'}`}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-extrabold text-slate-800">{rev.leadName || rev.leadId}</span>
+                        <span className="text-xs font-extrabold text-slate-800">
+                          {rev.leadName && !rev.leadName.includes('-') ? rev.leadName : (rev.leadName || 'Cliente rimosso')}
+                        </span>
                         <span className="text-[10px] text-slate-400">→</span>
                         <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">{rev.vendorName}</span>
                         {rev.leadEmail && (
@@ -280,6 +316,14 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
                         ) : (
                           <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">In attesa di risposta</span>
                         )}
+
+                        <button
+                          onClick={() => handleDeleteReview(rev.id)}
+                          className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-colors cursor-pointer ml-1"
+                          title="Elimina questa recensione"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                     {rev.comment && (
