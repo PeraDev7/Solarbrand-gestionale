@@ -1220,7 +1220,7 @@ app.post('/api/leads/import', async (req, res) => {
 // ── GOOGLE MAPS / APIFY LEAD SCRAPER ──
 app.post('/api/leads/apify-search', async (req, res) => {
   try {
-    const { industries, locations, fetch_count = 20, keywords, cities, wantsVerifiedEmail = true, assignedColleague = '', assignedTelefonista = '', service = '' } = req.body || {};
+    const { industries, locations, fetch_count = 20, keywords, cities, wantsVerifiedEmail = true, assignedColleague = '', assignedTelefonista = '', service = '', duplicateMode = 'skip' } = req.body || {};
 
     const settingRow = await db.get("SELECT value FROM settings WHERE `key` IN ('apify_token', 'apify_api_key') ORDER BY CASE `key` WHEN 'apify_token' THEN 0 ELSE 1 END LIMIT 1", []) as any;
     const apifyToken = (settingRow?.value || process.env.APIFY_TOKEN || process.env.APIFY_API_KEY || '').trim();
@@ -1264,6 +1264,7 @@ app.post('/api/leads/apify-search', async (req, res) => {
       assignedColleague: assignedColleague ? String(assignedColleague).trim() : '',
       assignedTelefonista: assignedTelefonista ? String(assignedTelefonista).trim() : '',
       customService: service ? String(service).trim() : '',
+      duplicateMode: (['skip', 'use_existing', 'create_new'].includes(duplicateMode) ? duplicateMode : 'skip') as any,
     });
 
     res.json({ ok: true, runId: jobId, status: started.status });
@@ -1362,9 +1363,14 @@ app.get('/api/leads/apify-search/status', async (req, res) => {
     const finalLeads = job.collectedLeads.slice(0, job.targetCount);
     const now = new Date().toISOString();
     let importedCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
     const importedIds: string[] = [];
+    const duplicatesList: { row: number; existingName?: string; matchedOn?: string }[] = [];
+    const duplicateMode = job.duplicateMode || 'skip';
 
-    for (const lead of finalLeads) {
+    for (let i = 0; i < finalLeads.length; i++) {
+      const lead = finalLeads[i];
       const name = lead.full_name.trim() || lead.company.trim() || 'Lead Google Maps';
       const company = lead.company.trim() || name;
       const phone = lead.phone.trim();
@@ -1385,36 +1391,78 @@ app.get('/api/leads/apify-search/status', async (req, res) => {
       if (email) { conditions.push('LOWER(email) = ?'); params.push(email); }
       if (phone) { conditions.push("REPLACE(phone, ' ', '') LIKE ?"); params.push(`%${phone.replace(/\s/g, '').replace(/^\+39/, '')}%`); }
 
-      let exists = null;
+      let duplicate: any = null;
       if (conditions.length > 0) {
-        exists = await db.get(`SELECT id FROM leads WHERE ${conditions.join(' OR ')} LIMIT 1`, params) as any;
+        duplicate = await db.get(`SELECT * FROM leads WHERE ${conditions.join(' OR ')} LIMIT 1`, params) as any;
       }
 
-      if (!exists) {
-        const id = randomUUID();
-        try {
-          const leadService = job.customService || service || '';
-          const leadServices = job.customService ? [job.customService] : (services && services.length > 0 ? services : (leadService ? [leadService] : []));
-          const leadColleague = job.assignedColleague || '';
-          const leadTelefonisti = job.assignedTelefonista ? [job.assignedTelefonista] : [];
-
-          await db.run(`
-            INSERT INTO leads (id, name, company, phone, email, status, type, service, services, assignedColleague, assignedTelefonisti, source, notes, address, createdAt, updatedAt)
-            VALUES (?, ?, ?, ?, ?, 'Nuovo', 'Lead', ?, ?, ?, ?, 'apify_google_maps', ?, ?, ?, ?)
-          `, [id, name, company, phone, email, leadService, JSON.stringify(leadServices), leadColleague, JSON.stringify(leadTelefonisti), notes, address, now, now]);
-
-          await db.run(`
-            INSERT INTO history (id, leadId, timestamp, colleague, note, statusAfterCall, type)
-            VALUES (?, ?, ?, ?, ?, 'Nuovo', 'note')
-          `, [randomUUID(), id, now, 'Google Maps Scraper', `[IMPORTAZIONE GOOGLE MAPS] Azienda: ${company}${role ? ` | Referente: ${name} (${role})` : ''}`, 'Nuovo']);
-
-          importedCount++;
-          if (email) importedIds.push(id);
-        } catch (dbErr) {
-          console.error('[apify lead save error]:', dbErr);
+      if (duplicate && duplicateMode !== 'create_new') {
+        if (duplicateMode === 'skip') {
+          const matchedOn = email && String(duplicate.email || '').toLowerCase() === email ? 'email' : 'telefono';
+          skippedCount++;
+          duplicatesList.push({ row: i + 1, existingName: duplicate.name, matchedOn });
+          continue;
         }
-      } else {
-        if (exists.id && email) importedIds.push(exists.id);
+
+        if (duplicateMode === 'use_existing') {
+          try {
+            const existingTel = parseJsonField(duplicate.assignedTelefonisti) || [];
+            const newTelefonisti = job.assignedTelefonista ? [job.assignedTelefonista] : existingTel;
+            const newColleague = job.assignedColleague || duplicate.assignedColleague || '';
+            const existingServices = parseJsonField(duplicate.services) || (duplicate.service ? [duplicate.service] : []);
+            const newServices = job.customService ? [job.customService] : (existingServices.length > 0 ? existingServices : services);
+            const newService = job.customService || duplicate.service || (newServices[0] || service);
+
+            await db.run(`
+              UPDATE leads 
+              SET name=?, company=?, phone=?, email=?, service=?, services=?, assignedColleague=?, assignedTelefonisti=?, status=?, address=?, updatedAt=?
+              WHERE id=?
+            `, [
+              name || duplicate.name,
+              company || duplicate.company,
+              phone || duplicate.phone,
+              email || duplicate.email,
+              newService,
+              JSON.stringify(newServices),
+              newColleague,
+              JSON.stringify(newTelefonisti),
+              'Nuovo',
+              address || duplicate.address,
+              now,
+              duplicate.id
+            ]);
+
+            updatedCount++;
+            if (email) importedIds.push(duplicate.id);
+          } catch (updateErr) {
+            console.error('[apify lead update error]:', updateErr);
+          }
+          continue;
+        }
+      }
+
+      // Nuova creazione (o duplicato con create_new)
+      const id = randomUUID();
+      try {
+        const leadService = job.customService || service || '';
+        const leadServices = job.customService ? [job.customService] : (services && services.length > 0 ? services : (leadService ? [leadService] : []));
+        const leadColleague = job.assignedColleague || '';
+        const leadTelefonisti = job.assignedTelefonista ? [job.assignedTelefonista] : [];
+
+        await db.run(`
+          INSERT INTO leads (id, name, company, phone, email, status, type, service, services, assignedColleague, assignedTelefonisti, source, notes, address, createdAt, updatedAt)
+          VALUES (?, ?, ?, ?, ?, 'Nuovo', 'Lead', ?, ?, ?, ?, 'apify_google_maps', ?, ?, ?, ?)
+        `, [id, name, company, phone, email, leadService, JSON.stringify(leadServices), leadColleague, JSON.stringify(leadTelefonisti), notes, address, now, now]);
+
+        await db.run(`
+          INSERT INTO history (id, leadId, timestamp, colleague, note, statusAfterCall, type)
+          VALUES (?, ?, ?, ?, ?, 'Nuovo', 'note')
+        `, [randomUUID(), id, now, 'Google Maps Scraper', `[IMPORTAZIONE GOOGLE MAPS] Azienda: ${company}${role ? ` | Referente: ${name} (${role})` : ''}`, 'Nuovo']);
+
+        importedCount++;
+        if (email) importedIds.push(id);
+      } catch (dbErr) {
+        console.error('[apify lead save error]:', dbErr);
       }
     }
 
@@ -1422,6 +1470,9 @@ app.get('/api/leads/apify-search/status', async (req, res) => {
       status: 'DONE',
       ok: true,
       imported: importedCount,
+      updated: updatedCount,
+      skipped: skippedCount,
+      duplicates: duplicatesList,
       total: finalLeads.length,
       importedIds,
     };

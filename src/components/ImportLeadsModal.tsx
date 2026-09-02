@@ -614,12 +614,20 @@ function ApifyGoogleMapsTab({ services = [], colleagues = [], colleagueObjects =
   const [assignedColleague, setAssignedColleague] = useState('');
   const [assignedTelefonista, setAssignedTelefonista] = useState('');
   const [service, setService] = useState('');
+  const [duplicateMode, setDuplicateMode] = useState<DuplicateMode>('skip');
 
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [foundSoFar, setFoundSoFar] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [result, setResult] = useState<{ found: number; imported: number; importedIds?: string[] } | null>(null);
+  const [result, setResult] = useState<{ 
+    found: number; 
+    imported: number; 
+    updated?: number; 
+    skipped?: number; 
+    duplicates?: { row: number; existingName?: string; matchedOn?: string }[];
+    importedIds?: string[];
+  } | null>(null);
   const [error, setError] = useState('');
   const [showNewsletterPrompt, setShowNewsletterPrompt] = useState(false);
 
@@ -696,6 +704,7 @@ function ApifyGoogleMapsTab({ services = [], colleagues = [], colleagueObjects =
         assignedColleague: assignedColleague || undefined,
         assignedTelefonista: assignedTelefonista || undefined,
         service: service || undefined,
+        duplicateMode,
       });
 
       if (!startRes.ok || !startRes.runId) {
@@ -718,6 +727,9 @@ function ApifyGoogleMapsTab({ services = [], colleagues = [], colleagueObjects =
             setResult({
               found: statusRes.total || 0,
               imported: statusRes.imported || 0,
+              updated: statusRes.updated || 0,
+              skipped: statusRes.skipped || 0,
+              duplicates: statusRes.duplicates || [],
               importedIds: statusRes.importedIds || [],
             });
           } else if (statusRes.status === 'FAILED') {
@@ -939,6 +951,26 @@ function ApifyGoogleMapsTab({ services = [], colleagues = [], colleagueObjects =
           </div>
         </div>
 
+        {/* Gestione Duplicati */}
+        <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <span>🔄</span> Gestione Duplicati
+            </h4>
+            <p className="text-[11px] text-slate-500">Cosa fare se un'azienda estratta ha lo stesso telefono o email di un contatto già presente nel CRM?</p>
+          </div>
+          <select
+            value={duplicateMode}
+            onChange={e => setDuplicateMode(e.target.value as DuplicateMode)}
+            disabled={loading}
+            className="bg-white border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-800 cursor-pointer min-w-[220px]"
+          >
+            <option value="skip">Salta Duplicati (Consigliato)</option>
+            <option value="use_existing">Aggiorna Scheda Esistente</option>
+            <option value="create_new">Crea Comunque Nuovo Lead</option>
+          </select>
+        </div>
+
         {error && (
           <div className="text-xs text-rose-700 font-bold bg-rose-50 p-4 rounded-xl border border-rose-200 flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
@@ -975,11 +1007,44 @@ function ApifyGoogleMapsTab({ services = [], colleagues = [], colleagueObjects =
                 <div>
                   <h4 className="font-extrabold text-emerald-950 text-sm">Estrazione da Google Maps Completata!</h4>
                   <p className="text-xs text-emerald-800">
-                    Estratti <strong>{result.found}</strong> contatti qualificati, di cui <strong>{result.imported}</strong> nuovi lead inseriti nel CRM con telefono ed email.
+                    Estratti <strong>{result.found}</strong> contatti qualificati da Google Maps.
                   </p>
                 </div>
               </div>
             </div>
+
+            {/* Stats Breakdown */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 grid grid-cols-3 gap-2">
+              <div className="text-center">
+                <p className="text-2xl font-black text-emerald-600">{result.imported}</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase">Nuovi Importati</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-black text-blue-600">{result.updated || 0}</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase">Aggiornati</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-black text-amber-500">{result.skipped || 0}</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase">Duplicati Saltati</p>
+              </div>
+            </div>
+
+            {/* Dettaglio duplicati saltati */}
+            {result.duplicates && result.duplicates.length > 0 && (
+              <div className="w-full bg-amber-50 border border-amber-200 rounded-xl p-4 text-left">
+                <p className="text-xs font-bold text-amber-700 mb-2">⏭️ {result.skipped} contatti saltati perché già presenti in archivio:</p>
+                <div className="max-h-36 overflow-y-auto flex flex-col gap-1">
+                  {result.duplicates.slice(0, 20).map((d, i) => (
+                    <p key={i} className="text-[11px] text-amber-700">
+                      #{d.row}: corrisponde a "{d.existingName || 'contatto esistente'}" già in archivio (stesso {d.matchedOn || 'contatto'})
+                    </p>
+                  ))}
+                  {result.duplicates.length > 20 && (
+                    <p className="text-[11px] text-amber-600 font-semibold">…e altri {result.duplicates.length - 20} contatti.</p>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-200 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-2">

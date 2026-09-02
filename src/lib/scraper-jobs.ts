@@ -16,10 +16,14 @@ export interface ScraperJob {
   assignedColleague?: string;
   assignedTelefonista?: string;
   customService?: string;
+  duplicateMode?: 'skip' | 'use_existing' | 'create_new';
   result?: {
     status: 'DONE' | 'FAILED' | 'RUNNING';
     ok?: boolean;
     imported?: number;
+    updated?: number;
+    skipped?: number;
+    duplicates?: { row: number; existingName?: string; matchedOn?: string }[];
     total?: number;
     importedIds?: string[];
     error?: string;

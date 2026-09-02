@@ -114,6 +114,7 @@ export const api = {
     assignedColleague?: string;
     assignedTelefonista?: string;
     service?: string;
+    duplicateMode?: 'skip' | 'use_existing' | 'create_new';
   }) =>
     request<{ ok: boolean; runId: string; status: string }>('POST', '/api/leads/apify-search', data),
   getApifySearchStatus: (runId: string) =>
@@ -121,6 +122,9 @@ export const api = {
       status: 'RUNNING' | 'DONE' | 'FAILED';
       ok?: boolean;
       imported?: number;
+      updated?: number;
+      skipped?: number;
+      duplicates?: { row: number; existingName?: string; matchedOn?: string }[];
       total?: number;
       importedIds?: string[];
       foundSoFar?: number;
