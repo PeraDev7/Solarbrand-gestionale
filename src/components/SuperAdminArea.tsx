@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { Colleague, Service } from '../types';
-import { Plus, Trash2, X, Users, Briefcase, Calendar, KeyRound, Check, Mail, Eye, EyeOff, UserCheck } from 'lucide-react';
+import { Plus, Trash2, X, Users, Briefcase, Calendar, KeyRound, Check, Mail, Eye, EyeOff, UserCheck, Star, MessageSquare } from 'lucide-react';
 
 interface SuperAdminAreaProps {
   onClose: () => void;
@@ -11,8 +11,10 @@ interface SuperAdminAreaProps {
 }
 
 export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalendar, currentColleagueId }: SuperAdminAreaProps) {
+  const [activeTab, setActiveTab] = useState<'team' | 'reviews'>('team');
   const [colleagues, setColleagues] = useState<Colleague[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [newColleagueName, setNewColleagueName] = useState('');
@@ -40,12 +42,14 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [cols, servs] = await Promise.all([
+      const [cols, servs, revs] = await Promise.all([
         api.getColleagues(),
-        api.getServices()
+        api.getServices(),
+        api.getAdminReviews(),
       ]);
       setColleagues(cols);
       setServices(servs);
+      setReviews(revs);
     } catch (err) {
       console.error('Error fetching admin data:', err);
     } finally {
@@ -175,6 +179,119 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
             <X className="w-6 h-6" />
           </button>
         </div>
+
+        {/* Tab Selector */}
+        <div className="flex gap-1 px-6 pt-4 shrink-0 border-b border-slate-100">
+          <button
+            onClick={() => setActiveTab('team')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all cursor-pointer ${
+              activeTab === 'team'
+                ? 'bg-white border border-b-white border-slate-200 text-indigo-700 -mb-px'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            Team & Tipologie
+          </button>
+          <button
+            onClick={() => setActiveTab('reviews')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all cursor-pointer ${
+              activeTab === 'reviews'
+                ? 'bg-white border border-b-white border-slate-200 text-amber-600 -mb-px'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Star className="w-3.5 h-3.5" />
+            Recensioni
+            {reviews.filter(r => r.usedAt).length > 0 && (
+              <span className="bg-amber-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                {reviews.filter(r => r.usedAt).length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* ── TAB CONTENT ── */}
+        {activeTab === 'reviews' ? (
+          /* ── RECENSIONI PANEL ── */
+          <div className="p-6 overflow-y-auto flex-1">
+            {reviews.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                <Star className="w-12 h-12 mb-3 opacity-20" />
+                <p className="text-sm font-bold">Nessuna recensione ricevuta</p>
+                <p className="text-xs mt-1">Le recensioni verranno generate automaticamente quando un lead viene chiuso con successo.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Summary by agent */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                  {colleagues
+                    .filter(c => c.role === 'venditore' && (c.reviewCount || 0) > 0)
+                    .sort((a, b) => (b.avgRating || 0) - (a.avgRating || 0))
+                    .map(col => (
+                      <div key={col.id} className="bg-amber-50 border border-amber-100 rounded-2xl p-3 text-center">
+                        <div className="text-2xl font-black text-amber-500">{Number(col.avgRating || 0).toFixed(1)}</div>
+                        <div className="flex justify-center gap-0.5 my-1">
+                          {[1,2,3,4,5].map(s => (
+                            <Star key={s} className={`w-3 h-3 ${s <= Math.round(col.avgRating || 0) ? 'text-amber-400 fill-amber-400' : 'text-slate-300'}`} />
+                          ))}
+                        </div>
+                        <div className="text-xs font-bold text-slate-700 truncate">{col.name}</div>
+                        <div className="text-[10px] text-slate-400">{col.reviewCount} recens.</div>
+                      </div>
+                    ))
+                  }
+                </div>
+
+                {/* Review list */}
+                <h3 className="font-extrabold text-slate-700 text-sm flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-slate-400" />
+                  Tutte le recensioni ricevute ({reviews.filter(r => r.usedAt).length}/{reviews.length} compilate)
+                </h3>
+
+                {reviews.map(rev => (
+                  <div key={rev.id} className={`bg-white border rounded-2xl p-4 space-y-2 ${rev.usedAt ? 'border-slate-200' : 'border-dashed border-slate-200 opacity-60'}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-extrabold text-slate-800">{rev.leadName || rev.leadId}</span>
+                        <span className="text-[10px] text-slate-400">→</span>
+                        <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">{rev.vendorName}</span>
+                        {rev.leadEmail && (
+                          <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                            <Mail className="w-3 h-3" /> {rev.leadEmail}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {rev.usedAt ? (
+                          <>
+                            <div className="flex gap-0.5">
+                              {[1,2,3,4,5].map(s => (
+                                <Star key={s} className={`w-4 h-4 ${s <= rev.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200 fill-slate-200'}`} />
+                              ))}
+                            </div>
+                            <span className="text-sm font-black text-amber-600">{rev.rating}/5</span>
+                          </>
+                        ) : (
+                          <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">In attesa di risposta</span>
+                        )}
+                      </div>
+                    </div>
+                    {rev.comment && (
+                      <p className="text-xs text-slate-600 bg-slate-50 rounded-xl px-3 py-2 italic">
+                        "{rev.comment}"
+                      </p>
+                    )}
+                    <div className="text-[10px] text-slate-300">
+                      Inviata: {new Date(rev.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {rev.usedAt && ` · Compilata: ${new Date(rev.usedAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
 
         <div className="p-6 overflow-y-auto flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
           
@@ -479,6 +596,7 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
           </div>
 
         </div>
+        )} {/* end team tab */}
       </div>
     </div>
   );

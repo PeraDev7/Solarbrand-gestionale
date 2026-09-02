@@ -140,5 +140,8 @@ export const api = {
   updateImapAccount: (id: string, data: any) => request<any>('PUT', `/api/imap-accounts/${id}`, data),
   deleteImapAccount: (id: string) => request<any>('DELETE', `/api/imap-accounts/${id}`),
   checkImapAccount: (id: string) => request<any>('POST', `/api/imap-accounts/${id}/check`),
+
+  // Reviews
+  getAdminReviews: () => request<any[]>('GET', '/api/admin/reviews'),
 };
 
