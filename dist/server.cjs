@@ -25761,11 +25761,7 @@ app.post("/api/auth/logout", async (req, res) => {
 });
 app.post("/api/auth/set-password", async (req, res) => {
   if (!await requireAdmin(req, res)) return;
-  const { id, password, adminPassword } = req.body;
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Ariete2016**";
-  if (adminPassword !== ADMIN_PASSWORD) {
-    return res.status(403).json({ error: "Password amministratore errata" });
-  }
+  const { id, password } = req.body;
   if (!password || String(password).length < 6) {
     return res.status(400).json({ error: "La password deve avere almeno 6 caratteri" });
   }

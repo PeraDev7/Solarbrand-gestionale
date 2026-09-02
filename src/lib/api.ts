@@ -36,7 +36,7 @@ export const api = {
   getDemoColleagues: () => request<{ id: string, name: string, role: string }[]>('GET', '/api/auth/demo-colleagues'),
   demoLogin: (id: string) => request<LoginResult>('POST', '/api/auth/demo-login', { id }),
   logoutSession: (token: string) => request<{ok: boolean}>('POST', '/api/auth/logout', { token }),
-  setPassword: (id: string, password: string, adminPassword: string) => request<{ok: boolean}>('POST', '/api/auth/set-password', { id, password, adminPassword }),
+  setPassword: (id: string, password: string) => request<{ok: boolean}>('POST', '/api/auth/set-password', { id, password }),
   checkPassword: (password: string, level: 'admin' | 'operator') => request<{ok: boolean}>('POST', '/api/auth/check-password', { password, level }),
   disconnectGoogleCalendar: (vendorId: string) => request<{ok: boolean}>('POST', '/api/auth/google/disconnect', { vendorId }),
 

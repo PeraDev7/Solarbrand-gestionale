@@ -59,10 +59,7 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
       const created = await api.createColleague({ name: newColleagueName.trim(), role: newColleagueRole, email: newColleagueEmail.trim() });
       // If a password was provided, set it immediately
       if (newColleaguePassword.trim().length >= 6 && created?.id) {
-        const adminPassword = window.prompt('Password amministratore per impostare la password del nuovo utente:');
-        if (adminPassword) {
-          await api.setPassword(created.id, newColleaguePassword.trim(), adminPassword);
-        }
+        await api.setPassword(created.id, newColleaguePassword.trim());
       }
       setColleagueSuccess(`✅ Profilo di "${newColleagueName.trim()}" creato con successo!`);
       setNewColleagueName('');
@@ -110,11 +107,9 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
       setPasswordError('Minimo 6 caratteri');
       return;
     }
-    const adminPassword = window.prompt('Password amministratore per confermare la modifica:');
-    if (!adminPassword) return;
     try {
       const pwdToSave = newPassword;
-      await api.setPassword(col.id, pwdToSave, adminPassword);
+      await api.setPassword(col.id, pwdToSave);
       setSavedPassword(pwdToSave);
       setNewPassword('');
       setPasswordError('');
