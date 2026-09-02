@@ -206,24 +206,48 @@ export default function VendorApp({ session, onLogout }: Props) {
                         
                         {(() => {
                           const matchedLead = leads.find(l => l.id === appt.leadId);
-                          if (!matchedLead?.address) return null;
+                          if (!matchedLead) return null;
                           return (
-                            <a
-                              href={`https://maps.google.com/?q=${encodeURIComponent(matchedLead.address)}&t=k`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg w-fit transition-colors group cursor-pointer"
-                              title="Apri in Google Maps (Vista Satellitare)"
-                            >
-                              <MapPin className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform flex-shrink-0" />
-                              <span className="truncate max-w-[200px]">{matchedLead.address}</span>
-                              <ExternalLink className="w-3 h-3 opacity-60 ml-0.5 flex-shrink-0" />
-                            </a>
+                            <div className="space-y-1 mt-1">
+                              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                                {matchedLead.phone && (
+                                  <a 
+                                    href={`tel:${matchedLead.phone}`}
+                                    className="flex items-center gap-1 text-slate-700 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 px-2 py-0.5 rounded-md transition-colors"
+                                  >
+                                    <Phone className="w-3 h-3 text-emerald-600" />
+                                    <span>{matchedLead.phone}</span>
+                                  </a>
+                                )}
+                                {matchedLead.email && (
+                                  <a 
+                                    href={`mailto:${matchedLead.email}`}
+                                    className="flex items-center gap-1 text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 px-2 py-0.5 rounded-md transition-colors truncate max-w-[200px]"
+                                  >
+                                    <Mail className="w-3 h-3 text-indigo-500" />
+                                    <span className="truncate">{matchedLead.email}</span>
+                                  </a>
+                                )}
+                              </div>
+                              {matchedLead.address && (
+                                <a
+                                  href={`https://maps.google.com/?q=${encodeURIComponent(matchedLead.address)}&t=k`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg w-fit transition-colors group cursor-pointer"
+                                  title="Apri in Google Maps (Vista Satellitare)"
+                                >
+                                  <MapPin className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform flex-shrink-0" />
+                                  <span className="truncate max-w-[200px]">{matchedLead.address}</span>
+                                  <ExternalLink className="w-3 h-3 opacity-60 ml-0.5 flex-shrink-0" />
+                                </a>
+                              )}
+                            </div>
                           );
                         })()}
 
                         {appt.notes && (
-                          <p className="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-100 italic">
+                          <p className="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-100 italic mt-1">
                             "{appt.notes}"
                           </p>
                         )}

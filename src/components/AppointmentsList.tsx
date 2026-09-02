@@ -190,11 +190,28 @@ export default function AppointmentsList({ googleToken, leads, services, colleag
               </span>
             </div>
             <h3 className="font-extrabold text-slate-900 text-base">{app.leadName}</h3>
-            {matchedLead?.phone && (
-              <p className="text-xs text-slate-500 font-semibold flex items-center gap-1 mt-0.5">
-                <Phone className="w-3 h-3 text-slate-400" /> {matchedLead.phone}
-              </p>
-            )}
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              {matchedLead?.phone && (
+                <a
+                  href={`tel:${matchedLead.phone}`}
+                  onClick={e => e.stopPropagation()}
+                  className="text-xs text-slate-600 hover:text-indigo-600 font-semibold flex items-center gap-1 bg-slate-50 hover:bg-indigo-50 px-2 py-0.5 rounded-md transition-colors"
+                  title="Chiama numero"
+                >
+                  <Phone className="w-3 h-3 text-emerald-600" /> {matchedLead.phone}
+                </a>
+              )}
+              {matchedLead?.email && (
+                <a
+                  href={`mailto:${matchedLead.email}`}
+                  onClick={e => e.stopPropagation()}
+                  className="text-xs text-slate-600 hover:text-indigo-600 font-medium flex items-center gap-1 bg-slate-50 hover:bg-indigo-50 px-2 py-0.5 rounded-md transition-colors truncate max-w-[200px]"
+                  title="Invia email"
+                >
+                  <Mail className="w-3 h-3 text-indigo-500" /> <span className="truncate">{matchedLead.email}</span>
+                </a>
+              )}
+            </div>
             {matchedLead?.address && (
               <a
                 href={`https://maps.google.com/?q=${encodeURIComponent(matchedLead.address)}&t=k`}

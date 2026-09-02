@@ -289,12 +289,50 @@ export default function LeadDetail({
               {lead.company}
             </p>
           )}
+
+          {/* Recapiti Contatto: Telefono ed Email */}
+          <div className="mt-2 space-y-1">
+            {lead.phone ? (
+              <a
+                href={`tel:${lead.phone}`}
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-800 hover:text-indigo-600 transition-colors group"
+                title="Chiama numero"
+              >
+                <span className="w-5 h-5 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
+                  <Phone className="w-3 h-3" />
+                </span>
+                <span>{lead.phone}</span>
+              </a>
+            ) : (
+              <span className="flex items-center gap-1.5 text-xs text-slate-400 italic">
+                <Phone className="w-3 h-3" /> Nessun telefono
+              </span>
+            )}
+
+            {lead.email ? (
+              <a
+                href={`mailto:${lead.email}`}
+                className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 transition-colors group truncate max-w-[240px]"
+                title="Scrivi email"
+              >
+                <span className="w-5 h-5 rounded-md bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
+                  <Mail className="w-3 h-3" />
+                </span>
+                <span className="truncate">{lead.email}</span>
+              </a>
+            ) : (
+              <span className="flex items-center gap-1.5 text-xs text-slate-400 italic">
+                <Mail className="w-3 h-3" /> Nessuna email
+              </span>
+            )}
+          </div>
+
           {lead.address && (
             <a
               href={`https://maps.google.com/?q=${encodeURIComponent(lead.address)}&t=k`}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-1.5 flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-semibold bg-indigo-50/80 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition-all w-fit cursor-pointer group"
+              className="mt-2 flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-semibold bg-indigo-50/80 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition-all w-fit cursor-pointer group"
               title="Apri in Google Maps (Vista Satellitare)"
             >
               <MapPin className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform flex-shrink-0" />
