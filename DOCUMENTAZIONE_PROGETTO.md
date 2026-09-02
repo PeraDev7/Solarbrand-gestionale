@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 4.1 (Fix Reset Password Diretto Admin senza Doppio Check + Tipologie Trattate + Restrizioni Telefonista)  
+> **Versione**: 4.2 (Cancellazione a Cascata Lead + Pulizia Automatica Record Orfani + Fix Password Admin + Tipologie + Restrizioni)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
@@ -15,7 +15,7 @@
 L'applicazione supporta il flusso operativo aziendale completo con tre livelli di profilo:
 
 ### 1.1 Portale Super Admin (es. Erika — `eroikaphoto@gmail.com`)
-- **Gestione Completa Database Lead**: Creazione manuale nuovi lead, importazione massiva da Excel/CSV, riassegnazione a telefonisti e agenti commerciali.
+- **Gestione Completa Database Lead**: Creazione manuale nuovi lead, importazione massiva da Excel/CSV, riassegnazione a telefonisti e agenti commerciali. Cancellazione sicura a cascata (rimuove istantaneamente appuntamenti, schede visita, task, storico e allegati associati al lead).
 - **Tipologie Trattate dall'Azienda (ex Servizi)**: Configurazione e gestione delle tipologie di intervento (es. *Fotovoltaico Residenziale*, *Agricolo*, *Edile*, *Pompa di Calore*, *Comunità Energetica*).
 - **Gestione Team & Collaboratori**: Creazione account, assegnazione ruoli (`admin`, `telefonista`, `venditore`), assegnazione tipologie gestite e **reset password istantaneo 1-click** (senza fastidiosi prompt o doppi controlli password).
 - **Campagne Email Marketing & Tracking**: Creazione ed invio di campagne email massive tramite account SMTP aziendale (`info@solarbrandkg.it`), monitoraggio aperture pixel 1x1, click 302 e risposte automatiche via IMAP.
@@ -30,7 +30,7 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
 - **Restrizioni di Sicurezza**: NON possono creare nuovi lead, NON possono importare file Excel/CSV, NON possono creare/modificare template, NON inviano SMS e NON hanno accesso a campagne o impostazioni server.
 
 ### 1.3 Portale Agenti Commerciali / Venditori (es. Marco Rossi, Stefano Bianchi, Alessandro Neri, ecc.)
-- **Vista Appuntamenti Personali & Rating**: Vedono esclusivamente la lista sopralluoghi ed i lead affidati a loro, con il badge **Media Stelline (valutazione clienti)** in evidenza.
+- **Vista Appuntamenti Personali & Rating**: Vedono esclusivamente la lista sopralluoghi ed i lead affidati a loro, con il badge **Media Stelline (valutazione clienti)** in evidenza. Gli appuntamenti di lead cancellati vengono rimossi automaticamente in tempo reale.
 - **Sincronizzazione Google Calendar Personale (OAuth 2.0)**:
   - Ciascun agente commerciale collega autonomamente il proprio account Google personale/aziendale cliccando su *"Collega Google Calendar"*.
   - Quando l'ufficio fissa o riassegna un appuntamento all'agente, l'evento viene creato o aggiornato istantaneamente sul calendario Google del venditore assegnato.
@@ -42,13 +42,20 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
 
 ---
 
-## 2. Funzionalità Avanzate & Aggiornamenti Recenti (v4.1)
+## 2. Funzionalità Avanzate & Aggiornamenti Recenti (v4.2)
 
-### 2.1 Reset Password Istantaneo Admin (Senza Doppio Check)
+### 2.1 Cancellazione a Cascata & Pulizia Automatica Record Orfani
+- **Problema individuato**: Quando l'amministratore cancellava un lead dalla tabella `leads`, gli appuntamenti precedentemente fissati per quel cliente rimanevano orfani nella tabella `appointments` (e nelle schede visita / task), continuando ad apparire nella dashboard dell'agente assegnato.
+- **Soluzione applicata**:
+  - **DELETE a cascata in `server.ts`**: All'eliminazione di un lead, vengono automaticamente rimossi tutti i record collegati (`appointments`, `visit_reports`, `tasks`, `history`, `lead_attachments`, `email_campaign_recipients`).
+  - **Funzione `cleanupOrphanRecords()` all'avvio**: All'avvio del server viene eseguita una query di bonifica che elimina retroattivamente tutti i record orfani già presenti nel database.
+  - **JOIN filtrata negli endpoint**: `GET /api/appointments` e `GET /api/visit-reports` utilizzano `INNER JOIN leads` per garantire al 100% che nessun appuntamento orfano possa mai essere inviato agli agenti.
+
+### 2.2 Reset Password Istantaneo Admin (Senza Doppio Check)
 - **Problema risolto**: In precedenza, quando l'amministratore cambiava o impostava la password di un collaboratore, il frontend apriva un popup `window.prompt` chiedendo nuovamente la password admin e il server la confrontava con una variabile d'ambiente statica, causando l'errore *"Password amministratore errata"*.
 - **Comportamento nuovo**: L'amministratore autenticato (`admin`) digita direttamente la nuova password del collaboratore e clicca **"Salva Password"** o crea il profilo con password: l'operazione viene eseguita all'istante senza alcun popup o doppio controllo.
 
-### 2.2 Rinomina Globale "Servizi" ➔ "Tipologie"
+### 2.3 Rinomina Globale "Servizi" ➔ "Tipologie"
 - **Terminologia Allineata al Business**: Sostituita la dicitura *Servizi* con *Tipologie* (es. agricolo, edile, industriale, residenziale).
 - **Adeguamento UI Completo**:
   - Dropdown toolbar: `Tipologia (Tutte)`.
@@ -57,7 +64,7 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
   - Gestione collaboratori (`SuperAdminArea.tsx`): `Tipologie Trattate dall'Azienda`.
   - Report e PDF (`ReportsView.tsx`): filtri e tabelle con intestazione `Tipologie`.
 
-### 2.3 Restrizioni di Ruolo & Sicurezza Operatori Call Center
+### 2.4 Restrizioni di Ruolo & Sicurezza Operatori Call Center
 - **Pulsanti Amministrativi Riservati**:
   - Solo il Super Admin può visualizzare i pulsanti: *Template Email*, *Template SMS*, *Server SMTP*, *Server IMAP*, *Campagne Email Massive*, *Importa Lead* e *Nuovo Lead*.
 - **Scheda Lead**: Rimosso il pulsante/tendina SMS per i profili con ruolo `telefonista`. Mantenuto il modulo invio email con selezione dei template aziendali.
