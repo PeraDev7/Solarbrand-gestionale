@@ -9,12 +9,14 @@ interface AppointmentsListProps {
   services: string[];
   colleagues: string[];
   activeColleague?: string;
+  currentUserRole?: string;
   visibleColleagues?: string[];
   initialVendorFilter?: string;
   onSelectLead: (leadId: string) => void;
 }
 
-export default function AppointmentsList({ googleToken, leads, services, colleagues, activeColleague, visibleColleagues, initialVendorFilter = 'Tutti', onSelectLead }: AppointmentsListProps) {
+export default function AppointmentsList({ googleToken, leads, services, colleagues, activeColleague, currentUserRole, visibleColleagues, initialVendorFilter = 'Tutti', onSelectLead }: AppointmentsListProps) {
+  const isTelefonista = currentUserRole === 'telefonista';
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [allColleagueObjs, setAllColleagueObjs] = useState<Colleague[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,8 +101,12 @@ export default function AppointmentsList({ googleToken, leads, services, colleag
   const vendors = allColleagueObjs.filter(c => c.role === 'venditore');
 
   const filteredAppointments = appointments.filter(app => {
-    // Telephonist visibility filter: default to activeColleague unless showAllTelephonists is true
-    if (activeColleague && !showAllTelephonists) {
+    // Un telefonista (non admin) NON può vedere gli appuntamenti degli altri telefonisti!
+    if (isTelefonista) {
+      if (activeColleague && app.colleague && app.colleague.trim().toLowerCase() !== activeColleague.trim().toLowerCase()) {
+        return false;
+      }
+    } else if (activeColleague && !showAllTelephonists) {
       if (app.colleague && app.colleague !== activeColleague) return false;
     }
 
@@ -259,8 +265,8 @@ export default function AppointmentsList({ googleToken, leads, services, colleag
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Telephonist Filter Toggle */}
-          {activeColleague && (
+          {/* Telephonist Filter Toggle (Solo per Admin) */}
+          {!isTelefonista && activeColleague && (
             <button
               onClick={() => setShowAllTelephonists(!showAllTelephonists)}
               className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer flex items-center gap-1.5 ${
@@ -272,6 +278,13 @@ export default function AppointmentsList({ googleToken, leads, services, colleag
               <User className="w-3.5 h-3.5" />
               {showAllTelephonists ? 'Vedi Tutti i Telefonisti' : `Solo Miei (${activeColleague})`}
             </button>
+          )}
+
+          {isTelefonista && activeColleague && (
+            <div className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5" />
+              <span>I Miei Appuntamenti ({activeColleague})</span>
+            </div>
           )}
 
           {/* Vendor Filter Dropdown */}

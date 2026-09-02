@@ -672,7 +672,10 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
             
             /* Calendar View Layout */
             <div className="flex-1">
-              <AppointmentsList activeColleague={activeColleague} visibleColleagues={activeColleagueObj?.visibleColleagues} 
+              <AppointmentsList 
+                activeColleague={activeColleague} 
+                currentUserRole={activeColleagueObj?.role || session.role}
+                visibleColleagues={activeColleagueObj?.visibleColleagues} 
                 googleToken={googleToken}
                 leads={leads}
                 services={availableServices}
@@ -726,6 +729,7 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
         <LeadModal
           lead={editingLead}
           colleagueObjects={colleagueObjects}
+          currentUserRole={activeColleagueObj?.role || session.role}
           services={availableServices}
           activeColleague={activeColleague}
           onClose={() => { setShowLeadModal(false); setEditingLead(null); }}

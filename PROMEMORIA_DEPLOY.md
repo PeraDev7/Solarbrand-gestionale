@@ -3,7 +3,7 @@
 > 🟢 **STATO SISTEMA: ONLINE E ATTIVO SU HOSTINGER**  
 > **URL PUBBLICO**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **REPOSITORY GITHUB (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **VERSIONE ATTUALE**: 4.4 (Selezione Intere Tipologie Campagne Email + Assegnazione Agente, Telefonista e Tipologia all'Importazione CSV/Apify)
+> **VERSIONE ATTUALE**: 4.5 (Restrizioni Permessi Telefonisti: Assegnazione Solo ad Agenti e Isolamento Calendario Appuntamenti Personali)
 
 ---
 
@@ -38,7 +38,7 @@ Tutti gli account preesistenti (tranne Erika) hanno come password iniziale: **`S
 
 ---
 
-## 🛡️ MATRICE PERMESSI RUOLI (v4.0)
+## 🛡️ MATRICE PERMESSI RUOLI (v4.5)
 
 | Funzionalità / Azione | Super Admin (`admin`) | Telefonista (`telefonista`) | Venditore (`venditore`) |
 |---|:---:|:---:|:---:|
@@ -51,6 +51,8 @@ Tutti gli account preesistenti (tranne Erika) hanno come password iniziale: **`S
 | **Gestione Team, Tipologie & Password** | ✅ | ❌ | ❌ |
 | **Invio Email Singola da Scheda Lead** | ✅ | ✅ (con scelta template) | ❌ |
 | **Assegnazione Agente Commerciale su Lead** | ✅ | ✅ | ❌ |
+| **Assegnazione / Modifica Telefonisti su Lead** | ✅ | ❌ (riservato admin) | ❌ |
+| **Calendario Appuntamenti: Altri Telefonisti** | ✅ (vede tutti o filtra) | ❌ (vede solo i propri) | ❌ (solo i propri sopralluoghi) |
 | **Visibilità Lead** | Tutti | Solo assegnati nominalmente O per Tipologia | Solo appuntamenti/lead assegnati |
 
 *💡 **Gestione Team**: Da Erika (`eroikaphoto@gmail.com`), clicca su **Gestione Utenti / Team** in alto per aggiungere o modificare colleghi. Il sistema mostra la conferma visiva in chiaro della password impostata e permette di visualizzarla con l'icona occhio.*

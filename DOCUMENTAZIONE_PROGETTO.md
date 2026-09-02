@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 4.4 (Selezione Intere Tipologie Campagne Email + Assegnazione Agente, Telefonista e Tipologia all'Importazione CSV/Apify)  
+> **Versione**: 4.5 (Restrizioni Permessi Telefonisti: Assegnazione Solo ad Agenti e Isolamento Calendario Appuntamenti Personali)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
@@ -27,8 +27,9 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
 - **Visualizzazione Filtrata**: Visualizzano esclusivamente i lead assegnati direttamente a loro (`assignedTelefonisti`) **oppure** i lead con una delle **Tipologie** loro assegnate.
 - **Qualifica e Chiamate**: Lavorano i lead, aggiornano lo stato, aggiungono note di chiamata e fissano appuntamenti.
 - **Invio Email da Scheda Lead**: Possono inviare email singole direttamente dalla scheda del cliente, selezionando tra i template predefiniti creati dall'admin.
-- **Assegnazione Agente Commerciale**: Possono assegnare un venditore a un lead o sopralluogo.
-- **Restrizioni di Sicurezza**: NON possono creare nuovi lead, NON possono importare file Excel/CSV, NON possono creare/modificare template, NON inviano SMS e NON hanno accesso a campagne o impostazioni server.
+- **Assegnazione Riservata Solo ad Agenti Commerciali**: Possono assegnare il lead o il sopralluogo esclusivamente ad un **Agente Commerciale (venditore)**. Non possono assegnare né modificare i telefonisti assegnati al lead (privilegio riservato esclusivamente agli amministratori sia da interfaccia che da backend).
+- **Isolamento Calendario Appuntamenti**: Nel Calendario Appuntamenti visualizzano **esclusivamente i propri appuntamenti fissati**. Non possono vedere gli appuntamenti degli altri telefonisti (filtraggio blindato lato frontend e forzato a livello server API `/api/appointments`), con badge fisso "I Miei Appuntamenti".
+- **Restrizioni di Sicurezza**: NON possono importare file Excel/CSV, NON possono creare/modificare template, NON inviano SMS e NON hanno accesso a campagne o impostazioni server.
 
 ### 1.3 Portale Agenti Commerciali / Venditori (es. Marco Rossi, Stefano Bianchi, Alessandro Neri, Fabio Test, ecc.)
 - **Vista Appuntamenti Personali & Rating**: Vedono esclusivamente la lista sopralluoghi ed i lead affidati a loro, con il badge **Media Stelline (valutazione clienti)** in evidenza. Gli appuntamenti di lead cancellati vengono rimossi automaticamente in tempo reale.

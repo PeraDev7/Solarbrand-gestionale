@@ -153,10 +153,17 @@ app.get('/api/leads', async (req, res) => {
 });
 
 app.post('/api/leads', async (req, res) => {
+  const colleagueId = (req as any).colleagueId;
+  const requester = colleagueId ? (await db.get('SELECT * FROM colleagues WHERE id = ?', [colleagueId]) as any) : null;
+  const isTelefonista = requester && requester.role === 'telefonista';
+
   const { name, company='', phone='', email='', status='Nuovo', type='Lead',
           service='', services=[], assignedColleague='', assignedTelefonisti=[], notes='', address='', source='manual' } = req.body;
 
   if (!name) return res.status(400).json({ error: 'name è obbligatorio' });
+
+  // Un telefonista (non admin) NON può assegnare un lead a telefonisti, ma solo ad agenti!
+  const effectiveTelefonisti = isTelefonista ? [] : assignedTelefonisti;
 
   const id = randomUUID();
   const now = new Date().toISOString();
@@ -164,7 +171,7 @@ app.post('/api/leads', async (req, res) => {
   await db.run(`
     INSERT INTO leads (id, name, company, phone, email, status, type, service, services, assignedColleague, assignedTelefonisti, notes, address, source, createdAt, updatedAt)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `, [id, name, company, phone, email ? email.toLowerCase() : '', status, type, service, JSON.stringify(services), assignedColleague, JSON.stringify(assignedTelefonisti), notes, address, source, now, now]);
+  `, [id, name, company, phone, email ? email.toLowerCase() : '', status, type, service, JSON.stringify(services), assignedColleague, JSON.stringify(effectiveTelefonisti), notes, address, source, now, now]);
 
   if (notes && notes.trim()) {
     await db.run(`
@@ -223,6 +230,11 @@ app.put('/api/leads/:id', async (req, res) => {
   const existing = await db.get('SELECT * FROM leads WHERE id = ?', [id]) as any;
   if (!existing) return res.status(404).json({ error: 'Lead non trovato' });
 
+  // Security check: un telefonista (non admin) NON può assegnare un lead a telefonisti, ma solo ad agenti!
+  const colleagueId = (req as any).colleagueId;
+  const requester = colleagueId ? (await db.get('SELECT * FROM colleagues WHERE id = ?', [colleagueId]) as any) : null;
+  const isTelefonista = requester && requester.role === 'telefonista';
+
   const {
     name = existing.name,
     company = existing.company,
@@ -239,7 +251,12 @@ app.put('/api/leads/:id', async (req, res) => {
 
   const now = new Date().toISOString();
   const servicesJson = JSON.stringify(services !== undefined ? services : parseJsonField(existing.services));
-  const telefonistiJson = JSON.stringify(assignedTelefonisti !== undefined ? assignedTelefonisti : parseJsonField(existing.assignedTelefonisti));
+  
+  // Se l'utente è un telefonista non admin, ignora modifiche a assignedTelefonisti e mantieni quelli già assegnati dall'admin
+  const effectiveTelefonisti = isTelefonista 
+    ? parseJsonField(existing.assignedTelefonisti) 
+    : (assignedTelefonisti !== undefined ? assignedTelefonisti : parseJsonField(existing.assignedTelefonisti));
+  const telefonistiJson = JSON.stringify(effectiveTelefonisti);
 
   await db.run(`
     UPDATE leads
@@ -491,15 +508,31 @@ app.delete('/api/services/:id', async (req, res) => {
 // ── APPOINTMENTS ──
 app.get('/api/appointments', async (req, res) => {
   const { vendorName } = req.query;
+  const colleagueId = (req as any).colleagueId;
+  const requester = colleagueId ? (await db.get('SELECT * FROM colleagues WHERE id = ?', [colleagueId]) as any) : null;
+
   let query = `
     SELECT a.* FROM appointments a
     INNER JOIN leads l ON l.id = a.leadId
   `;
   let params: any[] = [];
+  const whereClauses: string[] = [];
+
   if (vendorName) {
-    query += ' WHERE LOWER(TRIM(a.assignedVendor)) = LOWER(TRIM(?))';
-    params = [vendorName as string];
+    whereClauses.push('LOWER(TRIM(a.assignedVendor)) = LOWER(TRIM(?))');
+    params.push(vendorName as string);
   }
+
+  // Se l'utente è un telefonista (non admin), NON può vedere gli appuntamenti degli altri telefonisti!
+  if (requester && requester.role === 'telefonista') {
+    whereClauses.push('LOWER(TRIM(a.colleague)) = LOWER(TRIM(?))');
+    params.push(requester.name);
+  }
+
+  if (whereClauses.length > 0) {
+    query += ' WHERE ' + whereClauses.join(' AND ');
+  }
+
   query += ' ORDER BY a.dateTime ASC';
   res.json(await db.all(query, params));
 });

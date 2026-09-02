@@ -8,11 +8,13 @@ interface LeadModalProps {
   colleagueObjects: Colleague[];   // oggetti completi con name + role
   services: string[];
   activeColleague: string;
+  currentUserRole?: string;
   onClose: () => void;
   onSave: () => void;
 }
 
-export default function LeadModal({ lead, colleagueObjects, services, activeColleague, onClose, onSave }: LeadModalProps) {
+export default function LeadModal({ lead, colleagueObjects, services, activeColleague, currentUserRole, onClose, onSave }: LeadModalProps) {
+  const isTelefonista = currentUserRole === 'telefonista';
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [phone, setPhone] = useState('');
@@ -94,7 +96,7 @@ export default function LeadModal({ lead, colleagueObjects, services, activeColl
         service: selectedServices[0] || '',
         services: selectedServices,
         assignedColleague: assignedColleague,
-        assignedTelefonisti: assignedTelefonisti,
+        assignedTelefonisti: isTelefonista ? (lead?.assignedTelefonisti || []) : assignedTelefonisti,
         notes: initialNotes.trim(),
         address: address.trim(),
       };
@@ -245,37 +247,55 @@ export default function LeadModal({ lead, colleagueObjects, services, activeColl
             </div>
           </div>
 
-          {/* ── ASSEGNAZIONE TELEFONISTI (multi-checkbox) ── */}
-          {telefonisti.length > 0 && (
-            <div className="border border-violet-100 rounded-2xl p-4 bg-violet-50/40">
-              <label className="text-xs font-bold text-violet-600 uppercase tracking-wider flex items-center gap-1.5 mb-3">
-                <PhoneCall className="w-3.5 h-3.5" />
-                Telefonisti Assegnati
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {telefonisti.map(c => {
-                  const isChecked = assignedTelefonisti.includes(c.name);
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => toggleTelefonista(c.name)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-                        isChecked
-                          ? 'bg-violet-600 text-white border-violet-600 shadow-sm'
-                          : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300 hover:bg-violet-50'
-                      }`}
-                    >
-                      {isChecked && <Check className="w-3 h-3" />}
-                      {c.name}
-                    </button>
-                  );
-                })}
+          {/* ── ASSEGNAZIONE TELEFONISTI (Sola lettura per telefonisti, editabile solo per Admin) ── */}
+          {isTelefonista ? (
+            lead?.assignedTelefonisti && lead.assignedTelefonisti.length > 0 && (
+              <div className="border border-violet-100 rounded-2xl p-4 bg-violet-50/30">
+                <label className="text-xs font-bold text-violet-600 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                  <PhoneCall className="w-3.5 h-3.5" />
+                  Telefonisti Assegnati (Impostati dall'Amministratore)
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {lead.assignedTelefonisti.map(t => (
+                    <span key={t} className="px-2.5 py-1 bg-violet-100 text-violet-700 text-xs font-bold rounded-lg flex items-center gap-1">
+                      📞 {t}
+                    </span>
+                  ))}
+                </div>
               </div>
-              {assignedTelefonisti.length === 0 && (
-                <p className="text-xs text-violet-400 mt-2 italic">Nessun telefonista assegnato</p>
-              )}
-            </div>
+            )
+          ) : (
+            telefonisti.length > 0 && (
+              <div className="border border-violet-100 rounded-2xl p-4 bg-violet-50/40">
+                <label className="text-xs font-bold text-violet-600 uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                  <PhoneCall className="w-3.5 h-3.5" />
+                  Telefonisti Assegnati
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {telefonisti.map(c => {
+                    const isChecked = assignedTelefonisti.includes(c.name);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => toggleTelefonista(c.name)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                          isChecked
+                            ? 'bg-violet-600 text-white border-violet-600 shadow-sm'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300 hover:bg-violet-50'
+                        }`}
+                      >
+                        {isChecked && <Check className="w-3 h-3" />}
+                        {c.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                {assignedTelefonisti.length === 0 && (
+                  <p className="text-xs text-violet-400 mt-2 italic">Nessun telefonista assegnato</p>
+                )}
+              </div>
+            )
           )}
 
           {/* ── AGENTE COMMERCIALE (singolo dropdown) ── */}

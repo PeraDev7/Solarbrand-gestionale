@@ -25132,6 +25132,9 @@ app.get("/api/leads", async (req, res) => {
   res.json(leads);
 });
 app.post("/api/leads", async (req, res) => {
+  const colleagueId = req.colleagueId;
+  const requester = colleagueId ? await db.get("SELECT * FROM colleagues WHERE id = ?", [colleagueId]) : null;
+  const isTelefonista = requester && requester.role === "telefonista";
   const {
     name,
     company = "",
@@ -25148,12 +25151,13 @@ app.post("/api/leads", async (req, res) => {
     source = "manual"
   } = req.body;
   if (!name) return res.status(400).json({ error: "name \xE8 obbligatorio" });
+  const effectiveTelefonisti = isTelefonista ? [] : assignedTelefonisti;
   const id = randomUUID();
   const now = (/* @__PURE__ */ new Date()).toISOString();
   await db.run(`
     INSERT INTO leads (id, name, company, phone, email, status, type, service, services, assignedColleague, assignedTelefonisti, notes, address, source, createdAt, updatedAt)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `, [id, name, company, phone, email ? email.toLowerCase() : "", status, type, service, JSON.stringify(services), assignedColleague, JSON.stringify(assignedTelefonisti), notes, address, source, now, now]);
+  `, [id, name, company, phone, email ? email.toLowerCase() : "", status, type, service, JSON.stringify(services), assignedColleague, JSON.stringify(effectiveTelefonisti), notes, address, source, now, now]);
   if (notes && notes.trim()) {
     await db.run(`
       INSERT INTO history (id, leadId, timestamp, colleague, note, statusAfterCall, type)
@@ -25202,6 +25206,9 @@ app.put("/api/leads/:id", async (req, res) => {
   const { id } = req.params;
   const existing = await db.get("SELECT * FROM leads WHERE id = ?", [id]);
   if (!existing) return res.status(404).json({ error: "Lead non trovato" });
+  const colleagueId = req.colleagueId;
+  const requester = colleagueId ? await db.get("SELECT * FROM colleagues WHERE id = ?", [colleagueId]) : null;
+  const isTelefonista = requester && requester.role === "telefonista";
   const {
     name = existing.name,
     company = existing.company,
@@ -25217,7 +25224,8 @@ app.put("/api/leads/:id", async (req, res) => {
   } = req.body;
   const now = (/* @__PURE__ */ new Date()).toISOString();
   const servicesJson = JSON.stringify(services !== void 0 ? services : parseJsonField(existing.services));
-  const telefonistiJson = JSON.stringify(assignedTelefonisti !== void 0 ? assignedTelefonisti : parseJsonField(existing.assignedTelefonisti));
+  const effectiveTelefonisti = isTelefonista ? parseJsonField(existing.assignedTelefonisti) : assignedTelefonisti !== void 0 ? assignedTelefonisti : parseJsonField(existing.assignedTelefonisti);
+  const telefonistiJson = JSON.stringify(effectiveTelefonisti);
   await db.run(`
     UPDATE leads
     SET name=?, company=?, phone=?, email=?, status=?, type=?, service=?, services=?, assignedColleague=?, assignedTelefonisti=?, address=?, updatedAt=?
@@ -25426,14 +25434,24 @@ app.delete("/api/services/:id", async (req, res) => {
 });
 app.get("/api/appointments", async (req, res) => {
   const { vendorName } = req.query;
+  const colleagueId = req.colleagueId;
+  const requester = colleagueId ? await db.get("SELECT * FROM colleagues WHERE id = ?", [colleagueId]) : null;
   let query = `
     SELECT a.* FROM appointments a
     INNER JOIN leads l ON l.id = a.leadId
   `;
   let params = [];
+  const whereClauses = [];
   if (vendorName) {
-    query += " WHERE LOWER(TRIM(a.assignedVendor)) = LOWER(TRIM(?))";
-    params = [vendorName];
+    whereClauses.push("LOWER(TRIM(a.assignedVendor)) = LOWER(TRIM(?))");
+    params.push(vendorName);
+  }
+  if (requester && requester.role === "telefonista") {
+    whereClauses.push("LOWER(TRIM(a.colleague)) = LOWER(TRIM(?))");
+    params.push(requester.name);
+  }
+  if (whereClauses.length > 0) {
+    query += " WHERE " + whereClauses.join(" AND ");
   }
   query += " ORDER BY a.dateTime ASC";
   res.json(await db.all(query, params));

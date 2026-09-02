@@ -86,12 +86,14 @@ export default function DashboardAlerts({ activeColleague, onSelectLead }: Dashb
 
   const todayAppts = appointments.filter(a => {
     if (!a.dateTime) return false;
+    if (activeColleague && a.colleague && a.colleague.trim().toLowerCase() !== activeColleague.trim().toLowerCase()) return false;
     const dStr = new Date(a.dateTime).toISOString().split('T')[0];
     return dStr === todayStr && a.completed !== 'true' && a.completed !== true;
   });
 
   const tomorrowAppts = appointments.filter(a => {
     if (!a.dateTime) return false;
+    if (activeColleague && a.colleague && a.colleague.trim().toLowerCase() !== activeColleague.trim().toLowerCase()) return false;
     const dStr = new Date(a.dateTime).toISOString().split('T')[0];
     return dStr === tomorrowStr && a.completed !== 'true' && a.completed !== true;
   });
