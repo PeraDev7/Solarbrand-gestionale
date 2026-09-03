@@ -67,7 +67,16 @@ export default function EmailCampaignManager({ onClose, currentUser, onOpenLead 
         fetch('/api/services').then(r => r.json()).catch(() => []),
       ]);
       setCampaigns(cRes);
-      setTemplates(tRes);
+      // Escludi i template automatici di sistema dalle campagne email massive
+      const manualTemplates = (tRes || []).filter((t: any) => {
+        if (t.templateType === 'post_visit' || t.templateType === 'review_request') return false;
+        const normalizedName = (t.name || '').toLowerCase().trim();
+        if (normalizedName.includes('post-sopralluogo') || normalizedName.includes('recensione consulente') || normalizedName.includes('richiesta recensione')) {
+          return false;
+        }
+        return true;
+      });
+      setTemplates(manualTemplates);
       setSmtpAccounts(sRes);
       setLeads(lRes.filter((l: Lead) => l.email));
       setServices(servRes || []);

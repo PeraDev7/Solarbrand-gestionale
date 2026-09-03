@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 4.6 (Gestione Duplicati Apify Google Maps + Restrizioni Scheda Lead per Agenti Commerciali: Solo Nota, No Email, No SMS, No Cancellazione Lead, Appuntamento Auto-Assegnato)  
+> **Versione**: 4.8 (Isolamento Template Email Automatici di Sistema "One-Time" da Scheda Lead e Campagne)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
@@ -167,6 +167,11 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
   - ✉️ **Email** in chiaro con link cliccabile `mailto:` per avviare il client di posta predefinito.
 - **Dashboard Agenti (`VendorApp`)**: Sia nelle card appuntamenti che nei lead associati sono sempre visibili e cliccabili numero di telefono ed email.
 - **Calendario Appuntamenti (`AppointmentsList`)**: In ogni card appuntamento sono riportati direttamente sia il telefono che l'email del cliente con badge dedicati.
+
+### 2.9 Isolamento Template Email Automatici "One-Time" (v4.8)
+- I due template di sistema automatici (*Ringraziamento Post-Sopralluogo* e *Richiesta Recensione Consulente* con token) rimangono modificabili solo nel pannello *Template Email* di amministrazione.
+- **Esclusione dalla selezione manuale**: I due template sono stati filtrati ed esclusi sia dal menu a tendina della **scheda lead singola (`SendEmailForm`)** che dal creatore di **campagne massive (`EmailCampaignManager`)**.
+- In questo modo non possono essere inviati per errore manualmente o duplicati, mantenendo il loro scopo esclusivo di automazioni di sistema one-time per singolo lead/evento.
 
 ---
 

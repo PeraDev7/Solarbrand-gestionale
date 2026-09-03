@@ -41,7 +41,18 @@ export default function SendEmailForm({ lead, onClose }: SendEmailFormProps) {
       }));
       setSmtpAccounts(mappedAccs);
       if (mappedAccs.length > 0) setSelectedAccount(mappedAccs[0].id);
-      setTemplates(tpls);
+
+      // Escludi i template automatici di sistema (Ringraziamento Post-Sopralluogo e Richiesta Recensione)
+      // che devono partire solo in automatico e rimanere one-time
+      const manualTemplates = (tpls || []).filter((t: any) => {
+        if (t.templateType === 'post_visit' || t.templateType === 'review_request') return false;
+        const normalizedName = (t.name || '').toLowerCase().trim();
+        if (normalizedName.includes('post-sopralluogo') || normalizedName.includes('recensione consulente') || normalizedName.includes('richiesta recensione')) {
+          return false;
+        }
+        return true;
+      });
+      setTemplates(manualTemplates);
     } catch (e) {
       console.error('Error fetching email form data:', e);
     }
