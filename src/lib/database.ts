@@ -444,6 +444,7 @@ export async function initDb() {
   await addCol('visit_reports', 'quoteDeliveredAt',     "TEXT DEFAULT ''");
 
   await addCol('email_templates',            'templateType', "TEXT DEFAULT 'custom'");
+  await addCol('email_templates',            'attachments',  "LONGTEXT DEFAULT NULL");
   await addCol('email_campaigns',            'sendDelay',    'INT DEFAULT 3');
   await addCol('email_campaign_recipients',  'replyText',    "TEXT DEFAULT ''");
   await addCol('email_campaign_recipients',  'messageId',    "TEXT DEFAULT ''");

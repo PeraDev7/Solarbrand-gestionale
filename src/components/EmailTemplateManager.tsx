@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
-import { X, Plus, Trash2, Mail, Check, Edit2 } from 'lucide-react';
+import { X, Plus, Trash2, Mail, Check, Edit2, Paperclip, File, UploadCloud } from 'lucide-react';
+import { EmailAttachment } from '../types';
 
 interface EmailTemplateManagerProps {
   onClose: () => void;
@@ -13,6 +14,7 @@ interface EmailTemplate {
   subject: string;
   body: string;
   templateType?: 'post_visit' | 'review_request' | 'custom';
+  attachments?: EmailAttachment[] | string;
   createdAt: string;
 }
 
@@ -24,6 +26,7 @@ export default function EmailTemplateManager({ onClose, services }: EmailTemplat
   const [name, setName] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  const [attachments, setAttachments] = useState<EmailAttachment[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -47,6 +50,15 @@ export default function EmailTemplateManager({ onClose, services }: EmailTemplat
     setName(tpl.name);
     setSubject(tpl.subject);
     setBody(tpl.body);
+    let atts: EmailAttachment[] = [];
+    if (tpl.attachments) {
+      if (typeof tpl.attachments === 'string') {
+        try { atts = JSON.parse(tpl.attachments); } catch (e) {}
+      } else if (Array.isArray(tpl.attachments)) {
+        atts = tpl.attachments;
+      }
+    }
+    setAttachments(atts);
   };
 
   const handleReset = () => {
@@ -54,6 +66,47 @@ export default function EmailTemplateManager({ onClose, services }: EmailTemplat
     setName('');
     setSubject('');
     setBody('');
+    setAttachments([]);
+  };
+
+  const readFileAsBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error || new Error('Errore lettura file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleAddAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    try {
+      const newAtts: EmailAttachment[] = [...attachments];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > 15 * 1024 * 1024) {
+          alert(`Il file "${file.name}" supera il limite consigliato di 15MB.`);
+          continue;
+        }
+        const dataUrl = await readFileAsBase64(file);
+        newAtts.push({
+          filename: file.name,
+          content: dataUrl,
+          contentType: file.type,
+          size: file.size
+        });
+      }
+      setAttachments(newAtts);
+    } catch (err: any) {
+      alert('Errore durante il caricamento del file: ' + err.message);
+    } finally {
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSave = async () => {
@@ -63,9 +116,9 @@ export default function EmailTemplateManager({ onClose, services }: EmailTemplat
     setSaving(true);
     try {
       if (editingId) {
-        await api.updateEmailTemplate(editingId, { name, subject, body });
+        await api.updateEmailTemplate(editingId, { name, subject, body, attachments });
       } else {
-        await api.createEmailTemplate({ name, subject, body });
+        await api.createEmailTemplate({ name, subject, body, attachments });
       }
       handleReset();
       fetchTemplates();
@@ -139,6 +192,24 @@ export default function EmailTemplateManager({ onClose, services }: EmailTemplat
                         </div>
                         <p className="text-xs text-indigo-600 font-semibold mt-0.5">Oggetto: {tpl.subject}</p>
                         <p className="text-xs text-slate-500 line-clamp-2 mt-1">{tpl.body.replace(/<[^>]*>?/gm, '')}</p>
+
+                        {/* Badge Allegati Fissi */}
+                        {(() => {
+                          let attCount = 0;
+                          if (tpl.attachments) {
+                            if (Array.isArray(tpl.attachments)) attCount = tpl.attachments.length;
+                            else if (typeof tpl.attachments === 'string') {
+                              try { attCount = JSON.parse(tpl.attachments).length; } catch(e){}
+                            }
+                          }
+                          if (attCount === 0) return null;
+                          return (
+                            <div className="mt-2 flex items-center gap-1.5 text-[11px] font-bold text-slate-600 bg-white border border-slate-200 px-2.5 py-1 rounded-lg w-fit">
+                              <Paperclip className="w-3.5 h-3.5 text-indigo-600" />
+                              <span>{attCount} allegat{attCount === 1 ? 'o fisso' : 'i fissi'}</span>
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200/60">
                         <button
@@ -200,6 +271,56 @@ export default function EmailTemplateManager({ onClose, services }: EmailTemplat
                 placeholder="Gentile {nome}, in merito al servizio {servizio}..."
                 className="w-full bg-white border border-slate-200 text-xs rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono"
               />
+            </div>
+
+            {/* Allegati Fissi del Template */}
+            <div className="bg-white border border-slate-200 rounded-xl p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <Paperclip className="w-3.5 h-3.5 text-indigo-600" />
+                  Allegati Fissi del Template ({attachments.length})
+                </label>
+                <label className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition-colors">
+                  <UploadCloud className="w-3.5 h-3.5" />
+                  <span>Aggiungi File</span>
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={handleAddAttachment}
+                  />
+                </label>
+              </div>
+
+              {attachments.length === 0 ? (
+                <p className="text-[11px] text-slate-400 italic">
+                  Nessun file allegato. Puoi caricare PDF, brochure aziendali o presentazioni che partiranno sempre con questo template.
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  {attachments.map((att, idx) => (
+                    <div key={idx} className="flex items-center justify-between bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg text-xs">
+                      <div className="flex items-center gap-2 truncate pr-2">
+                        <File className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="font-semibold text-slate-800 truncate">{att.filename}</span>
+                        {att.size && (
+                          <span className="text-[10px] text-slate-400 shrink-0">
+                            ({(att.size / 1024).toFixed(0)} KB)
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAttachment(idx)}
+                        className="text-slate-400 hover:text-rose-600 p-1 rounded transition-colors cursor-pointer"
+                        title="Rimuovi allegato"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="bg-slate-100 p-3 rounded-xl space-y-1">

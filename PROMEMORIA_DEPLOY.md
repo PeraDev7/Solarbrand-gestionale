@@ -3,7 +3,7 @@
 > 🟢 **STATO SISTEMA: ONLINE E ATTIVO SU HOSTINGER**  
 > **URL PUBBLICO**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **REPOSITORY GITHUB (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **VERSIONE ATTUALE**: 4.8 (Isolamento Template Automatici di Sistema "One-Time" da Scheda Lead e Campagne)
+> **VERSIONE ATTUALE**: 4.9 (Allegati Email Completi: Allegati Fissi nei Template + Upload al Volo e Pesca da Documenti Lead nella Scheda)
 
 ---
 
@@ -38,7 +38,7 @@ Tutti gli account preesistenti (tranne Erika) hanno come password iniziale: **`S
 
 ---
 
-## 🛡️ MATRICE PERMESSI RUOLI (v4.8)
+## 🛡️ MATRICE PERMESSI RUOLI (v4.9)
 
 | Funzionalità / Azione | Super Admin (`admin`) | Telefonista (`telefonista`) | Venditore (`venditore`) |
 |---|:---:|:---:|:---:|
@@ -47,8 +47,9 @@ Tutti gli account preesistenti (tranne Erika) hanno come password iniziale: **`S
 | **Creazione Manuale Nuovo Lead** | ✅ | ❌ | ❌ |
 | **Cancellazione Lead (Cestino)** | ✅ | ✅ | ❌ (bloccato UI & backend 403) |
 | **Invio SMS Rapido da Scheda** | ✅ | ❌ | ❌ (rimosso pulsante SMS) |
-| **Tab Email da Scheda Lead** | ✅ (solo template manuali) | ✅ (solo template manuali) | ❌ (nascosta) |
+| **Tab Email da Scheda Lead** | ✅ (con allegati al volo/da lead) | ✅ (con allegati al volo/da lead) | ❌ (nascosta) |
 | **Template Email Automatici (Post-Sopralluogo / Recensione)** | Modificabili in impostazioni | Invisibili nei selettori invio | Invisibili nei selettori invio |
+| **Template Email Manuali con Allegati Fissi** | ✅ (può caricare allegati fissi) | ❌ (usa i template con allegati) | ❌ |
 | **Fissa Appuntamento da Scheda Lead** | ✅ (sceglie agente/tipo) | ✅ (assegna ad agente) | ✅ (auto-assegnato a sé stesso + sync Google) |
 | **Registra Attività in Storico** | ✅ (Chiamata o Nota) | ✅ (Chiamata o Nota) | Solo Nota (Chiamata rimossa) |
 | **Note Automatiche Appuntamenti in Storico** | ✅ | ✅ | ✅ (visibile nella cronologia del lead) |

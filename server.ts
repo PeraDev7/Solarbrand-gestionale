@@ -795,18 +795,24 @@ app.get('/api/email-templates', async (req, res) => {
 });
 
 app.post('/api/email-templates', async (req, res) => {
-  const { name, subject='', body='' } = req.body;
+  const { name, subject='', body='', attachments=null } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'name richiesto' });
   const id = randomUUID();
   const now = new Date().toISOString();
-  await db.run('INSERT INTO email_templates (id, name, subject, body, createdAt) VALUES (?, ?, ?, ?, ?)', [id, name, subject, body, now]);
-  res.status(201).json({ id, name, subject, body, createdAt: now });
+  const attachmentsJson = attachments ? (typeof attachments === 'string' ? attachments : JSON.stringify(attachments)) : null;
+  await db.run('INSERT INTO email_templates (id, name, subject, body, attachments, createdAt) VALUES (?, ?, ?, ?, ?, ?)', [id, name, subject, body, attachmentsJson, now]);
+  res.status(201).json({ id, name, subject, body, attachments, createdAt: now });
 });
 
 app.put('/api/email-templates/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, subject, body } = req.body;
-  await db.run('UPDATE email_templates SET name=COALESCE(?,name), subject=COALESCE(?,subject), body=COALESCE(?,body) WHERE id=?', [name, subject, body, id]);
+  const { name, subject, body, attachments } = req.body;
+  const attachmentsJson = attachments !== undefined ? (typeof attachments === 'string' ? attachments : JSON.stringify(attachments)) : undefined;
+  if (attachmentsJson !== undefined) {
+    await db.run('UPDATE email_templates SET name=COALESCE(?,name), subject=COALESCE(?,subject), body=COALESCE(?,body), attachments=? WHERE id=?', [name, subject, body, attachmentsJson, id]);
+  } else {
+    await db.run('UPDATE email_templates SET name=COALESCE(?,name), subject=COALESCE(?,subject), body=COALESCE(?,body) WHERE id=?', [name, subject, body, id]);
+  }
   res.json(await db.get('SELECT * FROM email_templates WHERE id = ?', [id]));
 });
 
@@ -882,10 +888,21 @@ app.post('/api/send-email', async (req, res) => {
       to,
       subject,
       html: body,
-      attachments: (attachments || []).map((a: any) => a.path
-        ? { filename: a.filename, path: a.path }
-        : { filename: a.filename, content: a.content, encoding: 'base64' }
-      ),
+      attachments: (attachments || []).map((a: any) => {
+        if (a.path) {
+          return { filename: a.filename, path: a.path };
+        }
+        let rawContent = a.content || '';
+        if (rawContent.includes(',')) {
+          rawContent = rawContent.split(',')[1];
+        }
+        return {
+          filename: a.filename,
+          content: rawContent,
+          encoding: 'base64',
+          contentType: a.contentType || undefined
+        };
+      }),
     });
     res.json({ success: true, messageId: info.messageId });
   } catch (error) {

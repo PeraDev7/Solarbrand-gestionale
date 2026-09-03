@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 4.8 (Isolamento Template Email Automatici di Sistema "One-Time" da Scheda Lead e Campagne)  
+> **Versione**: 4.9 (Allegati Email Completi: Allegati Fissi nei Template + Upload al Volo e Pesca da Documenti Lead nella Scheda)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
@@ -172,6 +172,17 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
 - I due template di sistema automatici (*Ringraziamento Post-Sopralluogo* e *Richiesta Recensione Consulente* con token) rimangono modificabili solo nel pannello *Template Email* di amministrazione.
 - **Esclusione dalla selezione manuale**: I due template sono stati filtrati ed esclusi sia dal menu a tendina della **scheda lead singola (`SendEmailForm`)** che dal creatore di **campagne massive (`EmailCampaignManager`)**.
 - In questo modo non possono essere inviati per errore manualmente o duplicati, mantenendo il loro scopo esclusivo di automazioni di sistema one-time per singolo lead/evento.
+
+### 2.10 Gestione Completa Allegati Email (Nei Template Fissi e Al Volo da Scheda Lead) (v4.9)
+- **Allegati Fissi nei Template (`EmailTemplateManager`)**:
+  - Aggiunta colonna `attachments LONGTEXT DEFAULT NULL` nella tabella `email_templates`.
+  - Nella creazione o modifica di un template email l'amministratore può caricare documenti e PDF (es. brochure aziendale, schede tecniche di prodotto, listini).
+  - Badge visivo nelle card template con conteggio file fissi allegati.
+- **Invio Email da Scheda Lead (`SendEmailForm`)**:
+  - Selezionando un template che possiede allegati fissi, i file vengono precaricati istantaneamente nella lista allegati dell'email.
+  - **Caricamento al volo**: Pulsante *"Allega File"* per caricare sul momento documenti da disco.
+  - **Pesca da Documenti Lead**: Pulsante *"Da Documenti Lead"* che apre un modal per scegliere e allegare con un click i file già salvati nella tab Allegati della scheda lead.
+  - Gli allegati vengono convertiti in base64 e inviati tramite `nodemailer` con tracking del nome file nella nota di storico (`history`).
 
 ---
 

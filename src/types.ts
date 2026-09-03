@@ -42,12 +42,20 @@ export interface SmtpAccount {
   pass: string;
 }
 
+export interface EmailAttachment {
+  filename: string;
+  content: string; // Base64 content
+  contentType?: string;
+  size?: number;
+}
+
 export interface EmailTemplate {
   id: string;
   name: string;
   subject: string;
   body: string;
   templateType?: 'post_visit' | 'review_request' | 'custom';
+  attachments?: EmailAttachment[] | string;
   createdAt?: string;
 }
 
