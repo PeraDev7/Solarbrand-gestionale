@@ -3,7 +3,7 @@
 > 🟢 **STATO SISTEMA: ONLINE E ATTIVO SU HOSTINGER**  
 > **URL PUBBLICO**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **REPOSITORY GITHUB (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **VERSIONE ATTUALE**: 4.10.1 — ErrorBoundary Globale + Fix crash da Google Translate/estensioni Chrome (`translate="no"` su `<html>`)
+> **VERSIONE ATTUALE**: 4.10.2 — Visibilità completa Tipologie Aziendali per Admin e in Creazione/Modifica Lead
 
 ---
 

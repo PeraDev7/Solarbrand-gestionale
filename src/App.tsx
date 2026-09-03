@@ -68,7 +68,10 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
   const [services, setServices] = useState<string[]>([]);
 
   const activeColleagueObj = colleagueObjects.find(c => c.name === activeColleague);
-  const availableServices = activeColleagueObj?.services || [];
+  const isAdmin = session.role === 'admin' || activeColleagueObj?.role === 'admin';
+  const availableServices = (isAdmin || !activeColleagueObj?.services || activeColleagueObj.services.length === 0)
+    ? services
+    : activeColleagueObj.services;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('Tutti');
@@ -730,7 +733,7 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
           lead={editingLead}
           colleagueObjects={colleagueObjects}
           currentUserRole={activeColleagueObj?.role || session.role}
-          services={availableServices}
+          services={services}
           activeColleague={activeColleague}
           onClose={() => { setShowLeadModal(false); setEditingLead(null); }}
           onSave={() => { 
