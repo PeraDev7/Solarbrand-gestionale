@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 4.9 (Allegati Email Completi: Allegati Fissi nei Template + Upload al Volo e Pesca da Documenti Lead nella Scheda)  
+> **Versione**: 4.10.1 (ErrorBoundary Globale + Fix crash da Google Translate/estensioni Chrome)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
@@ -184,9 +184,29 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
   - **Pesca da Documenti Lead**: Pulsante *"Da Documenti Lead"* che apre un modal per scegliere e allegare con un click i file già salvati nella tab Allegati della scheda lead.
   - Gli allegati vengono convertiti in base64 e inviati tramite `nodemailer` con tracking del nome file nella nota di storico (`history`).
 
+### 2.11 ErrorBoundary Globale + Fix Crash da Google Translate / Estensioni Chrome (v4.10 - v4.10.1)
+
+#### Problema Rilevato — Schermata Bianca su Chrome (Erika, Surface Notebook)
+- **Sintomo**: L'utente Erika (admin) su Microsoft Surface Notebook con Google Chrome vedeva la pagina diventare completamente bianca subito dopo aver assegnato o modificato un lead. Su altri PC e in modalità incognito il problema non si presentava.
+- **Diagnosi**: Aggiunto un **React Error Boundary globale** (`src/components/ErrorBoundary.tsx`) che intercetta qualunque eccezione non gestita nell'albero React e la mostra all'utente invece dello schermo bianco, con messaggio di errore, stack trace e componenti coinvolti.
+- **Errore Catturato** (visibile grazie all'ErrorBoundary):
+  ```
+  NotFoundError: Failed to execute 'insertBefore' on 'Node':
+  The node before which the new node is to be inserted is not a child of this node.
+  ```
+- **Causa Radice**: L'errore **NON era un bug nel codice applicativo**, ma un conflitto tra React e una **estensione Chrome** (Google Translate o similare) installata sul browser di Erika. Le estensioni di traduzione modificano direttamente il DOM HTML, andando in conflitto con il reconciler di React che non trova più i nodi dove deve inserire elementi. In modalità incognito le estensioni sono disabilitate, per questo il problema non si presentava.
+
+#### Soluzione Applicata
+1. **`src/components/ErrorBoundary.tsx`** (nuovo): Componente React class-based che avvolge tutta l'app. In caso di crash mostra messaggio d'errore, stack trace, componente coinvolto e pulsanti per ricaricare o riprovare.
+2. **`src/main.tsx`**: `<App />` avvolto con `<ErrorBoundary>` come wrapper globale.
+3. **`index.html`**: Aggiunto `translate="no"` e `lang="it"` al tag `<html>` — impedisce a Google Translate e simili di modificare il DOM dell'applicazione, prevenendo il conflitto alla radice.
+
+> **💡 Lezione Appresa**: Se un'app React crasha solo su un browser/PC specifico, sospettare sempre le **estensioni del browser** (Google Translate, Grammarly, LastPass, uBlock Origin). Il sintomo tipico è `insertBefore` / `removeChild` su `Node`. La fix è `translate="no"` sull'`<html>`.
+
 ---
 
 ## 3. Schema Database (18 Tabelle)
+
 
 1. `leads`: Anagrafica lead/clienti con `address`, `colleagueId`, stato preventivo e note.
 2. `colleagues`: Operatori ed agenti con ruolo (`telefonista` | `venditore` | `admin`), `email`, `passwordHash`, rating stelline e `googleTokens`.
