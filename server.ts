@@ -2236,15 +2236,21 @@ async function runImapCheck(account: any): Promise<{ repliesFound: number; inbox
     await client.connect();
     const lock = await client.getMailboxLock('INBOX');
     try {
+      const existsCount = (client.mailbox as any)?.exists ?? (lock as any)?.mailbox?.exists ?? 0;
+      if (existsCount === 0) {
+        console.log(`[IMAP check] Casella INBOX per "${account.name}" vuota (0 messaggi).`);
+        return { repliesFound: 0, inboxMatches: 0 };
+      }
+
       // Cutoff: solo messaggi dopo l'ultimo check (o ultimi 7 giorni se primo avvio)
       const sinceDate = account.lastChecked
         ? new Date(account.lastChecked)
         : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-      // Fetch tutti i messaggi con solo headers (leggero) e filtra per data lato JS
-      // — più compatibile di client.search() con UID su server Hostinger IMAP
+      // Fetch i messaggi fino a existsCount con solo headers (leggero) e filtra per data lato JS
       const messages: any[] = [];
-      for await (const msg of client.fetch('1:*', {
+      const fetchRange = `1:${existsCount}`;
+      for await (const msg of client.fetch(fetchRange, {
         envelope: true,
         source: { headersOnly: true },
       })) {
@@ -2359,12 +2365,13 @@ async function runImapCheck(account: any): Promise<{ repliesFound: number; inbox
       }
 
     } finally {
-      lock.release();
+      try { lock.release(); } catch (_) {}
     }
-    await client.logout();
   } catch (err) {
-    console.error('[IMAP check]', err);
+    console.error('[IMAP check error]', err);
     throw err;
+  } finally {
+    try { await client.logout(); } catch (_) {}
   }
 
   await db.run("UPDATE imap_accounts SET lastChecked = ? WHERE id = ?", [new Date().toISOString(), account.id]);

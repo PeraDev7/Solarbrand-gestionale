@@ -3,7 +3,7 @@
 > 🟢 **STATO SISTEMA: ONLINE E ATTIVO SU HOSTINGER**  
 > **URL PUBBLICO**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **REPOSITORY GITHUB (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **VERSIONE ATTUALE**: 4.10.2 — Visibilità completa Tipologie Aziendali per Admin e in Creazione/Modifica Lead
+> **VERSIONE ATTUALE**: 4.10.3 — Fix IMAP Scanner: gestione sicura messaggi casella e prevenzione errore 'Command failed' su caselle vuote/Hostinger
 
 ---
 

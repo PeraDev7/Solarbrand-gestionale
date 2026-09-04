@@ -26908,9 +26908,15 @@ async function runImapCheck(account) {
     await client.connect();
     const lock = await client.getMailboxLock("INBOX");
     try {
+      const existsCount = client.mailbox?.exists ?? lock?.mailbox?.exists ?? 0;
+      if (existsCount === 0) {
+        console.log(`[IMAP check] Casella INBOX per "${account.name}" vuota (0 messaggi).`);
+        return { repliesFound: 0, inboxMatches: 0 };
+      }
       const sinceDate = account.lastChecked ? new Date(account.lastChecked) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
       const messages = [];
-      for await (const msg of client.fetch("1:*", {
+      const fetchRange = `1:${existsCount}`;
+      for await (const msg of client.fetch(fetchRange, {
         envelope: true,
         source: { headersOnly: true }
       })) {
@@ -27014,12 +27020,19 @@ ${bodyText.slice(0, 1500)}` + (msgId ? `
         inboxMatches++;
       }
     } finally {
-      lock.release();
+      try {
+        lock.release();
+      } catch (_) {
+      }
     }
-    await client.logout();
   } catch (err) {
-    console.error("[IMAP check]", err);
+    console.error("[IMAP check error]", err);
     throw err;
+  } finally {
+    try {
+      await client.logout();
+    } catch (_) {
+    }
   }
   await db.run("UPDATE imap_accounts SET lastChecked = ? WHERE id = ?", [(/* @__PURE__ */ new Date()).toISOString(), account.id]);
   console.log(`[IMAP CHECK] "${account.name}": ${repliesFound} risposte campagna, ${inboxMatches} email inbox abbinate`);
