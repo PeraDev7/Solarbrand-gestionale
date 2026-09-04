@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 4.11 (Deliverability Email & Anti-Spam: Tracking pulito /p/ e /t/, Multipart text/plain, List-Unsubscribe, From display name)  
+> **Versione**: 4.12 (Modifica Nome Operatori e Tipologie da Gestione Team con propagazione automatica a cascata)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
@@ -217,6 +217,20 @@ Per evitare che i filtri antispam (Gmail, Outlook, Yahoo) classifichino le email
    - Header `mailto:` integrato nativamente su ogni invio campagna, allineandosi ai requisiti per mittenti di massa Gmail/Yahoo 2024.
 5. **Rimozione Header Personalizzati Sospetti**:
    - Eliminati header `X-Campaign-Id` e `X-Recipient-Id` che fungevano da signature di invio di massa non autenticato.
+
+### 2.13 Modifica Nome Operatori e Tipologie da Gestione Team (v4.12)
+Dal pannello **"Gestione Team, Tipologie & Ruoli Aziendali"** (riservato agli amministratori):
+1. **Rinomina Operatori Inline (Pencil Icon)**:
+   - Accanto al nome di ogni operatore è presente il pulsante Matita che trasforma il titolo in campo input con tasti di salvataggio rapido (`Enter` o spunta verde) e annullamento (`Esc` o croce rossa).
+   - **Propagazione Automatica a Cascata nel Database**:
+     - `leads.assignedColleague`: aggiornato se assegnato come commerciale principale;
+     - `leads.assignedTelefonisti`: aggiornato all'interno dell'array JSON senza corrompere gli altri operatori assegnati;
+     - `appointments.colleague` e `appointments.assignedVendor`: aggiornati per preservare lo storico appuntamenti e il calendario;
+     - `visit_reports.vendorName`: aggiornato per mantenere intatte le schede sopralluogo compilate;
+     - `history.colleague`: aggiornato in tutte le note ed eventi storici del CRM.
+2. **Rinomina Tipologie Inline**:
+   - Accanto al badge di ciascuna tipologia è presente l'icona Matita per modificare il nome al volo.
+   - Il server propaga la modifica su tutti i lead (`leads.service` e array `leads.services`) e sui servizi assegnati ai collaboratori (`colleagues.services`).
 
 ---
 

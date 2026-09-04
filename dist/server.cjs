@@ -25387,8 +25387,26 @@ app.put("/api/colleagues/:id", async (req, res) => {
     SET name=?, services=?, visibleColleagues=?, role=?, phone=?, email=?
     WHERE id=?
   `, [newName, newServices, newVisible, newRole, newPhone, newEmail, id]);
-  if (name && name !== existing.name) {
-    await db.run("UPDATE leads SET assignedColleague=? WHERE assignedColleague=?", [name, existing.name]);
+  if (name && name.trim() && name.trim() !== existing.name) {
+    const cleanOldName = existing.name;
+    const cleanNewName = name.trim();
+    await db.run("UPDATE leads SET assignedColleague=? WHERE assignedColleague=?", [cleanNewName, cleanOldName]);
+    try {
+      const allLeads = await db.all("SELECT id, assignedTelefonisti FROM leads", []);
+      for (const l of allLeads) {
+        const arr = parseJsonField(l.assignedTelefonisti);
+        if (Array.isArray(arr) && arr.includes(cleanOldName)) {
+          const updatedArr = arr.map((item) => item === cleanOldName ? cleanNewName : item);
+          await db.run("UPDATE leads SET assignedTelefonisti=? WHERE id=?", [JSON.stringify(updatedArr), l.id]);
+        }
+      }
+    } catch (e) {
+      console.error("[rename colleague] errore update assignedTelefonisti:", e);
+    }
+    await db.run("UPDATE appointments SET colleague=? WHERE colleague=?", [cleanNewName, cleanOldName]);
+    await db.run("UPDATE appointments SET assignedVendor=? WHERE assignedVendor=?", [cleanNewName, cleanOldName]);
+    await db.run("UPDATE visit_reports SET vendorName=? WHERE vendorName=?", [cleanNewName, cleanOldName]);
+    await db.run("UPDATE history SET colleague=? WHERE colleague=?", [cleanNewName, cleanOldName]);
   }
   const updated = await db.get("SELECT * FROM colleagues WHERE id = ?", [id]);
   const { pin, passwordHash, googleTokens, ...safeUpdated } = updated;

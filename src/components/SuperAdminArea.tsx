@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { Colleague, Service } from '../types';
-import { Plus, Trash2, X, Users, Briefcase, Calendar, KeyRound, Check, Mail, Eye, EyeOff, UserCheck, Star, MessageSquare } from 'lucide-react';
+import { Plus, Trash2, X, Users, Briefcase, Calendar, KeyRound, Check, Mail, Eye, EyeOff, UserCheck, Star, MessageSquare, Pencil } from 'lucide-react';
 
 interface SuperAdminAreaProps {
   onClose: () => void;
@@ -32,8 +32,15 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
   const [savedPassword, setSavedPassword] = useState(''); // shows last saved password
   const [showPassword, setShowPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
-  const [passwordSuccess, setPasswordSuccess] = useState('');
   const [roleSuccessId, setRoleSuccessId] = useState<string | null>(null);
+
+  // Modifica nome operatore
+  const [editingColleagueId, setEditingColleagueId] = useState<string | null>(null);
+  const [editingColleagueName, setEditingColleagueName] = useState('');
+
+  // Modifica nome tipologia
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+  const [editingServiceName, setEditingServiceName] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -139,6 +146,46 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
       onUpdate();
     } catch (err: any) {
       alert(err.message || 'Errore eliminazione profilo');
+    }
+  };
+
+  const saveColleagueName = async (col: Colleague) => {
+    const trimmed = editingColleagueName.trim();
+    if (!trimmed) {
+      alert('Il nome non può essere vuoto');
+      return;
+    }
+    if (trimmed === col.name) {
+      setEditingColleagueId(null);
+      return;
+    }
+    try {
+      await api.updateColleague(col.id, { name: trimmed });
+      setEditingColleagueId(null);
+      await fetchData();
+      onUpdate();
+    } catch (err: any) {
+      alert(err.message || 'Errore aggiornamento nome operatore');
+    }
+  };
+
+  const saveServiceName = async (srv: Service) => {
+    const trimmed = editingServiceName.trim();
+    if (!trimmed) {
+      alert('Il nome della tipologia non può essere vuoto');
+      return;
+    }
+    if (trimmed === srv.name) {
+      setEditingServiceId(null);
+      return;
+    }
+    try {
+      await api.updateService(srv.id, { name: trimmed });
+      setEditingServiceId(null);
+      await fetchData();
+      onUpdate();
+    } catch (err: any) {
+      alert(err.message || 'Errore aggiornamento nome tipologia');
     }
   };
 
@@ -440,18 +487,62 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
               </div>
 
               <div className="flex flex-wrap gap-1.5 pt-2">
-                {services.map(srv => (
-                  <span key={srv.id} className="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-700 pl-3 pr-1.5 py-1 rounded-xl text-xs font-bold shadow-xs group">
-                    <span>{srv.name}</span>
-                    <button 
-                      onClick={() => deleteService(srv)}
-                      className="text-slate-300 hover:text-rose-500 hover:bg-rose-50 p-0.5 rounded-md transition-colors cursor-pointer"
-                      title="Elimina tipologia"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </span>
-                ))}
+                {services.map(srv => {
+                  const isEditing = editingServiceId === srv.id;
+                  if (isEditing) {
+                    return (
+                      <span key={srv.id} className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-300 text-slate-800 px-2 py-1 rounded-xl text-xs font-bold shadow-xs">
+                        <input
+                          type="text"
+                          value={editingServiceName}
+                          onChange={e => setEditingServiceName(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') saveServiceName(srv);
+                            if (e.key === 'Escape') setEditingServiceId(null);
+                          }}
+                          autoFocus
+                          className="bg-white border border-amber-400 rounded-lg px-2 py-0.5 text-xs font-bold text-slate-900 w-32 focus:outline-none"
+                        />
+                        <button
+                          onClick={() => saveServiceName(srv)}
+                          className="text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 p-1 rounded-md transition-colors cursor-pointer"
+                          title="Salva nome tipologia"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setEditingServiceId(null)}
+                          className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1 rounded-md transition-colors cursor-pointer"
+                          title="Annulla"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </span>
+                    );
+                  }
+                  return (
+                    <span key={srv.id} className="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-700 pl-3 pr-1.5 py-1 rounded-xl text-xs font-bold shadow-xs group hover:border-slate-300">
+                      <span>{srv.name}</span>
+                      <button
+                        onClick={() => {
+                          setEditingServiceId(srv.id);
+                          setEditingServiceName(srv.name);
+                        }}
+                        className="text-slate-400 hover:text-amber-600 hover:bg-amber-50 p-0.5 rounded-md transition-colors cursor-pointer"
+                        title="Modifica nome tipologia"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                      <button 
+                        onClick={() => deleteService(srv)}
+                        className="text-slate-300 hover:text-rose-500 hover:bg-rose-50 p-0.5 rounded-md transition-colors cursor-pointer"
+                        title="Elimina tipologia"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </span>
+                  );
+                })}
               </div>
             </div>
 
@@ -469,7 +560,50 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
                 <div key={col.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-extrabold text-slate-900 text-base">{col.name}</h4>
+                      {editingColleagueId === col.id ? (
+                        <div className="flex items-center gap-1.5 bg-slate-50 border border-indigo-200 rounded-xl px-2 py-1">
+                          <input
+                            type="text"
+                            value={editingColleagueName}
+                            onChange={e => setEditingColleagueName(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') saveColleagueName(col);
+                              if (e.key === 'Escape') setEditingColleagueId(null);
+                            }}
+                            autoFocus
+                            placeholder="Nome operatore..."
+                            className="bg-white border border-indigo-400 rounded-lg px-2 py-1 text-sm font-extrabold text-slate-900 focus:outline-none"
+                          />
+                          <button
+                            onClick={() => saveColleagueName(col)}
+                            className="text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 p-1 rounded-lg transition-colors cursor-pointer"
+                            title="Salva nome operatore"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setEditingColleagueId(null)}
+                            className="text-slate-400 hover:text-slate-600 hover:bg-slate-200 p-1 rounded-lg transition-colors cursor-pointer"
+                            title="Annulla"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 group">
+                          <h4 className="font-extrabold text-slate-900 text-base">{col.name}</h4>
+                          <button
+                            onClick={() => {
+                              setEditingColleagueId(col.id);
+                              setEditingColleagueName(col.name);
+                            }}
+                            className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-1 rounded-md transition-colors cursor-pointer"
+                            title="Modifica nome operatore"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                       <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
                         col.role === 'venditore' ? 'bg-amber-100 text-amber-800' :
                         col.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-indigo-100 text-indigo-800'
