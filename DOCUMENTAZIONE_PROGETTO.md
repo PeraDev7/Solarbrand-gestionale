@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 4.12 (Modifica Nome Operatori e Tipologie da Gestione Team con propagazione automatica a cascata)  
+> **Versione**: 4.13 (Sistema Unsubscribe GDPR One-Click conforme RFC 8058, separazione email dirette 1-to-1 da campagne massive, blocco automatico e badge lead)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
@@ -254,7 +254,29 @@ Dal pannello **"Gestione Team, Tipologie & Ruoli Aziendali"** (riservato agli am
 15. `lead_attachments`: Registro dei file caricati e collegati ai singoli lead.
 16. `email_campaigns`: Campagne di email marketing massive con contatori (inviati, aperti, cliccati, risposte).
 17. `email_campaign_recipients`: Destinatari campagne con tracking aperture, click e risposte.
-18. `oauth_states`: Gestione stati temporanei handshake OAuth Google.
+19. `leads.unsubscribed`: Flag GDPR (0/1) che blocca l'invio di future campagne promozionali al contatto.
+
+---
+
+## 3.1 Deliverability Email & Sistema Disiscrizione GDPR (v4.13)
+
+Per garantire che le email non finiscano in spam e rispettare i requisiti internazionali (Google, Yahoo, GDPR):
+
+1. **Separazione Netta tra Invio Singolo Diretto ed Email Marketing**:
+   - **Email Singole da Scheda Lead (`POST /api/send-email`)**: Utilizzate dalle operatrici dopo una chiamata o dai commerciali. **NON hanno intestazioni di marketing, NON hanno header `List-Unsubscribe` e NON hanno link di disiscrizione nel testo**. Vengono percepite dai provider (Gmail, Outlook) come corrispondenza privata diretta persona-a-persona.
+   - **Campagne Email Massive (`POST /api/email-campaigns/:id/send`)**: Includono per legge gli header conformi **RFC 8058 One-Click** (`List-Unsubscribe: <https://crm.solarbrandkg.it/u/:token>`, `List-Unsubscribe-Post: List-Unsubscribe=One-Click`) e il link di disiscrizione nel piè di pagina.
+2. **Endpoint di Disiscrizione Iper-Veloce (`/u/:token`)**:
+   - Supporta richieste GET da browser (interfaccia pulita per l'utente) e richieste POST automatiche dei provider di posta (Google One-Click).
+   - Registra istantaneamente `unsubscribed = 1` sul lead e su tutte le anagrafiche con la stessa email.
+   - Inserisce automaticamente nello storico del lead: `🚫 [DISISCRIZIONE EMAIL] Il contatto ha revocato il consenso e si è disiscritto dalle comunicazioni email.`.
+3. **Blocco Automatico ed Evidenza Visiva**:
+   - Quando si caricano i destinatari in una campagna, i lead disiscritti vengono **esclusi automaticamente** (`skippedUnsubscribed`).
+   - Nella scheda del lead compare il badge rosso in evidenza: `🚫 Disiscritto da Campagne Email`.
+   - Se un'operatrice tenta di mandare una mail manuale, compare un banner di avviso giallo/rosso di cautela legale.
+4. **Migliorie Tecniche Deliverability**:
+   - Punteggio **10/10 su Mail-Tester** con SPF, DKIM, DMARC e Reverse DNS verificati sul server SMTP dedicato (`dms01.vhosting-it.net`).
+   - Generazione automatica multipart `text/plain` via `htmlToText` in tandem con `text/html`.
+   - Tracking aperture pixel trasparente `1x1` e tracking click senza query string sospette (`/p/:eid` e `/t/:token`).
 
 ---
 

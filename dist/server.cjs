@@ -24717,6 +24717,7 @@ async function initDb() {
   await addCol("leads", "quoteDeliveredAt", "TEXT DEFAULT ''");
   await addCol("leads", "address", "TEXT DEFAULT ''");
   await addCol("leads", "assignedTelefonisti", "TEXT DEFAULT '[]'");
+  await addCol("leads", "unsubscribed", "INT DEFAULT 0");
   await addCol("visit_reports", "visitStatus", "TEXT DEFAULT 'effettuato'");
   await addCol("visit_reports", "clientType", "TEXT DEFAULT 'residenziale'");
   await addCol("visit_reports", "hasHeatPump", "INT DEFAULT 0");
@@ -26672,9 +26673,14 @@ app.post("/api/email-campaigns/:id/recipients", async (req, res) => {
   if (!campaign) return res.status(404).json({ error: "Campagna non trovata" });
   if (campaign.status !== "draft") return res.status(400).json({ error: "Campagna non in stato draft" });
   let added = 0;
+  let skippedUnsubscribed = 0;
   for (const lid of leadIds) {
     const lead = await db.get("SELECT * FROM leads WHERE id = ?", [lid]);
     if (!lead || !lead.email) continue;
+    if (lead.unsubscribed === 1) {
+      skippedUnsubscribed++;
+      continue;
+    }
     const existing = await db.get("SELECT id FROM email_campaign_recipients WHERE campaignId = ? AND leadId = ?", [campaignId, lid]);
     if (existing) continue;
     await db.run(`
@@ -26683,7 +26689,7 @@ app.post("/api/email-campaigns/:id/recipients", async (req, res) => {
     `, [randomUUID(), campaignId, lid, lead.email.toLowerCase(), lead.name]);
     added++;
   }
-  res.json({ ok: true, added });
+  res.json({ ok: true, added, skippedUnsubscribed });
 });
 app.delete("/api/email-campaigns/:id/recipients/:rid", async (req, res) => {
   await db.run("DELETE FROM email_campaign_recipients WHERE id = ? AND campaignId = ?", [req.params.rid, req.params.id]);
@@ -26748,9 +26754,16 @@ app.post("/api/email-campaigns/:id/send", async (req, res) => {
           });
           const pixelUrl = `${baseUrl}/p/${encodeURIComponent(r.id)}`;
           const pixelTag = `<img src="${pixelUrl}" width="1" height="1" border="0" alt="" style="height:1px!important;width:1px!important;border:0!important;margin:0!important;padding:0!important;outline:none!important;" />`;
+          const unsubUrl = `${baseUrl}/u/${encodeURIComponent(r.id)}`;
+          const unsubFooterHtml = `
+          <div style="margin-top: 35px; pt: 16px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; text-align: center; line-height: 1.5;">
+            Ricevi questa email in relazione ai servizi offerti da Solar Brand.<br/>
+            Se non desideri pi\xF9 ricevere comunicazioni, puoi <a href="${unsubUrl}" style="color: #64748b; text-decoration: underline;">disiscriverti qui con 1 click</a>.
+          </div>
+        `;
           let finalBody = "";
           if (rawContent.includes("</body>")) {
-            finalBody = rawContent.replace("</body>", `${pixelTag}</body>`);
+            finalBody = rawContent.replace("</body>", `${unsubFooterHtml}${pixelTag}</body>`);
           } else {
             finalBody = `<!DOCTYPE html>
 <html>
@@ -26760,20 +26773,24 @@ app.post("/api/email-campaigns/:id/send", async (req, res) => {
 </head>
 <body style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #1e293b; line-height: 1.6; margin: 0; padding: 20px; background-color: #ffffff;">
   ${rawContent}
+  ${unsubFooterHtml}
   ${pixelTag}
 </body>
 </html>`;
           }
           const finalSubject = template.subject.replace(/\{nome\}/g, leadName).replace(/\{azienda\}/g, company).replace(/\{agente\}/g, "");
-          const fromDisplay = smtp.name ? `"${smtp.name}" <${smtp.user_email}>` : smtp.user_email;
+          const senderName = smtp.name && smtp.name.trim() ? smtp.name.trim() : "Solar Brand";
+          const fromDisplay = `"${senderName}" <${smtp.user_email}>`;
           const info = await transporter.sendMail({
             from: fromDisplay,
+            replyTo: smtp.user_email,
             to: r.email,
             subject: finalSubject,
             html: finalBody,
             text: htmlToText(finalBody),
             headers: {
-              "List-Unsubscribe": `<mailto:${smtp.user_email}?subject=Unsubscribe>`
+              "List-Unsubscribe": `<${unsubUrl}>, <mailto:${smtp.user_email}?subject=Unsubscribe>`,
+              "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"
             }
           });
           const messageId = info.messageId || "";
@@ -26873,6 +26890,65 @@ app.get("/t/:token", async (req, res) => {
   }
   res.redirect(302, targetUrl);
 });
+var handleUnsubscribe = async (req, res) => {
+  const { token } = req.params;
+  const recipientId = token;
+  let leadName = "";
+  let emailAddr = "";
+  let success = false;
+  if (recipientId) {
+    try {
+      const r = await db.get("SELECT * FROM email_campaign_recipients WHERE id = ?", [recipientId]);
+      if (r) {
+        emailAddr = r.email;
+        const now = (/* @__PURE__ */ new Date()).toISOString();
+        await db.run("UPDATE leads SET unsubscribed = 1, updatedAt = ? WHERE id = ?", [now, r.leadId]);
+        await db.run("UPDATE leads SET unsubscribed = 1, updatedAt = ? WHERE LOWER(email) = LOWER(?)", [now, r.email]);
+        const lead = await db.get("SELECT * FROM leads WHERE id = ?", [r.leadId]);
+        leadName = lead?.name || r.leadName || "";
+        await db.run(
+          "INSERT INTO history (id, leadId, timestamp, colleague, note, statusAfterCall, type) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          [randomUUID(), r.leadId, now, "Sistema Privacy", "\u{1F6AB} [DISISCRIZIONE EMAIL] Il contatto ha revocato il consenso e si \xE8 disiscritto dalle comunicazioni email.", lead?.status || "", "note"]
+        );
+        await db.run("UPDATE email_campaign_recipients SET errorMsg = 'Disiscritto' WHERE id = ?", [recipientId]);
+        success = true;
+      }
+    } catch (err) {
+      console.error("[UNSUBSCRIBE] Errore:", err);
+    }
+  }
+  if (req.method === "POST") {
+    return res.status(200).send("Unsubscribed successfully");
+  }
+  res.send(`<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Disiscrizione Confermata - Solar Brand</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; margin: 0; padding: 40px 20px; color: #1e293b; display: flex; align-items: center; justify-content: center; min-height: 80vh; }
+    .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; max-width: 480px; width: 100%; padding: 40px 32px; text-align: center; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); }
+    .icon { font-size: 48px; margin-bottom: 16px; }
+    h1 { font-size: 20px; font-weight: 800; color: #0f172a; margin: 0 0 12px; }
+    p { font-size: 14px; color: #64748b; line-height: 1.6; margin: 0 0 24px; }
+    .badge { display: inline-block; background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; font-size: 13px; font-weight: 700; padding: 6px 14px; border-radius: 12px; margin-bottom: 20px; }
+    .footer { font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; pt: 16px; margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">${success ? "\u2705" : "\u26A0\uFE0F"}</div>
+    <h1>${success ? "Disiscrizione Confermata" : "Richiesta Ricevuta"}</h1>
+    ${emailAddr ? `<div class="badge">${emailAddr}</div>` : ""}
+    <p>${success ? "Il tuo indirizzo email \xE8 stato rimosso con successo dalle nostre liste di invio. Non riceverai ulteriori comunicazioni promozionali da Solar Brand." : "La tua richiesta di cancellazione \xE8 stata elaborata."}</p>
+    <div class="footer">Solar Brand \u2014 Rispetto della Privacy e Regolamento GDPR</div>
+  </div>
+</body>
+</html>`);
+};
+app.get("/u/:token", handleUnsubscribe);
+app.post("/u/:token", handleUnsubscribe);
 app.get("/api/email-track/open", async (req, res) => {
   const { eid } = req.query;
   res.set("Content-Type", "image/gif");

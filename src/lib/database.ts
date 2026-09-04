@@ -430,6 +430,7 @@ export async function initDb() {
   await addCol('leads', 'quoteDeliveredAt',      "TEXT DEFAULT ''");
   await addCol('leads', 'address',               "TEXT DEFAULT ''");
   await addCol('leads', 'assignedTelefonisti',   "TEXT DEFAULT '[]'");
+  await addCol('leads', 'unsubscribed',          "INT DEFAULT 0");
 
   await addCol('visit_reports', 'visitStatus',          "TEXT DEFAULT 'effettuato'");
   await addCol('visit_reports', 'clientType',           "TEXT DEFAULT 'residenziale'");

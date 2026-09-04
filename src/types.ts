@@ -17,6 +17,7 @@ export interface Lead {
   quoteDeliveryMethod?: 'whatsapp' | 'cartaceo' | 'email';
   quoteFileName?: string;
   quoteDeliveredAt?: string;
+  unsubscribed?: number; // 1 = disiscritto da comunicazioni email per GDPR
   createdAt: string;
   updatedAt: string;
 }

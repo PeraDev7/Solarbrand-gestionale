@@ -281,6 +281,12 @@ export default function LeadDetail({
             {lead.assignedColleague && (
               <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-lg">💼 {lead.assignedColleague}</span>
             )}
+            {/* Badge Disiscrizione Email GDPR */}
+            {Boolean(lead.unsubscribed) && (
+              <span className="px-2 py-0.5 bg-rose-100 border border-rose-200 text-rose-800 text-[10px] font-black rounded-lg flex items-center gap-1 shadow-xs">
+                🚫 Disiscritto da Campagne Email
+              </span>
+            )}
           </div>
           <h2 className="text-xl font-black text-slate-900 mt-1">{lead.name}</h2>
           {lead.company && (

@@ -213,6 +213,17 @@ export default function SendEmailForm({ lead, onClose }: SendEmailFormProps) {
         <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Invia Email al Lead</span>
       </div>
 
+      {Boolean(lead.unsubscribed) && (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-xs text-rose-800 space-y-1">
+          <p className="font-bold flex items-center gap-1.5">
+            🚫 ATTENZIONE: Contatto Disiscritto
+          </p>
+          <p className="text-[11px] text-rose-700">
+            Questo contatto ha revocato il consenso e si è disiscritto dalle comunicazioni promozionali. Procedi con l'invio solo se strettamente richiesto dal cliente via telefono.
+          </p>
+        </div>
+      )}
+
       {smtpAccounts.length === 0 ? (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 space-y-1">
           <p className="font-bold">⚠️ Account Email non ancora attivo</p>
