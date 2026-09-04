@@ -963,6 +963,9 @@ app.post('/api/send-email', async (req, res) => {
       subject,
       html: body,
       text: htmlToText(body),
+      headers: {
+        'List-Unsubscribe': `<mailto:${smtpUser}?subject=Unsubscribe>`,
+      },
       attachments: (attachments || []).map((a: any) => {
         if (a.path) {
           return { filename: a.filename, path: a.path };
