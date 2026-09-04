@@ -32,6 +32,7 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
   const [savedPassword, setSavedPassword] = useState(''); // shows last saved password
   const [showPassword, setShowPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
   const [roleSuccessId, setRoleSuccessId] = useState<string | null>(null);
 
   // Modifica nome operatore
