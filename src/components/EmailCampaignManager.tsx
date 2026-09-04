@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   X, Plus, Send, Trash2, Users, Mail, BarChart2, ChevronRight,
   Flame, Eye, MousePointer, MessageCircle, CheckCircle, XCircle,
-  Clock, RefreshCw, Filter, AlertCircle, ArrowUpDown
+  Clock, RefreshCw, Filter, AlertCircle, ArrowUpDown, Info
 } from 'lucide-react';
 import { EmailCampaign, EmailCampaignRecipient, EmailTemplate, Lead } from '../types';
 import { authFetch as fetch } from '../lib/api';
@@ -30,6 +30,53 @@ function pct(num: number, total: number): string {
   return Math.round((num / total) * 100) + '%';
 }
 
+function normalizeServiceStr(str: any): string {
+  if (!str || typeof str !== 'string') return '';
+  return str.trim().toLowerCase();
+}
+
+export function leadMatchesService(lead: Lead, serviceName: string): boolean {
+  if (!serviceName || serviceName === 'Tutti') return true;
+  const target = normalizeServiceStr(serviceName);
+  if (!target) return false;
+
+  // Check lead.service (supporta anche valori separati da virgola)
+  if (lead.service) {
+    const sNorm = normalizeServiceStr(lead.service);
+    if (sNorm === target) return true;
+    const parts = sNorm.split(',').map(p => p.trim());
+    if (parts.includes(target)) return true;
+  }
+
+  // Check lead.services (array di stringhe)
+  if (Array.isArray(lead.services)) {
+    for (const s of lead.services) {
+      if (typeof s === 'string') {
+        const sNorm = normalizeServiceStr(s);
+        if (sNorm === target) return true;
+        const parts = sNorm.split(',').map(p => p.trim());
+        if (parts.includes(target)) return true;
+      }
+    }
+  } else if (typeof (lead as any).services === 'string') {
+    const raw = ((lead as any).services || '').trim();
+    if (raw.startsWith('[') && raw.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          for (const s of parsed) {
+            if (normalizeServiceStr(s) === target) return true;
+          }
+        }
+      } catch {}
+    }
+    const parts = normalizeServiceStr(raw).split(',').map((p: string) => p.trim());
+    if (parts.includes(target)) return true;
+  }
+
+  return false;
+}
+
 export default function EmailCampaignManager({ onClose, currentUser, onOpenLead }: EmailCampaignManagerProps) {
   const [view, setView] = useState<View>('list');
   const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
@@ -37,6 +84,7 @@ export default function EmailCampaignManager({ onClose, currentUser, onOpenLead 
   const [recipients, setRecipients] = useState<EmailCampaignRecipient[]>([]);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [smtpAccounts, setSmtpAccounts] = useState<SmtpAccount[]>([]);
+  const [rawLeads, setRawLeads] = useState<Lead[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [selectedServiceFilter, setSelectedServiceFilter] = useState<string>('Tutti');
@@ -78,7 +126,9 @@ export default function EmailCampaignManager({ onClose, currentUser, onOpenLead 
       });
       setTemplates(manualTemplates);
       setSmtpAccounts(sRes);
-      setLeads(lRes.filter((l: Lead) => l.email));
+      const allLeadsList: Lead[] = Array.isArray(lRes) ? lRes : [];
+      setRawLeads(allLeadsList);
+      setLeads(allLeadsList.filter((l: Lead) => l.email && l.email.trim()));
       setServices(servRes || []);
     } catch (e: any) {
       console.error('Error fetching campaign data:', e);
@@ -228,10 +278,46 @@ export default function EmailCampaignManager({ onClose, currentUser, onOpenLead 
     setSelectedLeadIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
+  // Raccoglie tutte le tipologie: sia dalla tabella services di sistema, sia direttamente da tutti i lead nel CRM
+  const allServiceList = useMemo(() => {
+    const map = new Map<string, { id?: string; name: string }>();
+
+    // 1. Dalla tabella services di sistema
+    services.forEach(srv => {
+      if (srv?.name && srv.name.trim()) {
+        map.set(srv.name.trim().toLowerCase(), { id: srv.id, name: srv.name.trim() });
+      }
+    });
+
+    // 2. Da tutti i lead nel CRM (così se un lead ha "BANDO INAIL" creata altrove, non va MAI persa)
+    rawLeads.forEach(l => {
+      if (l.service && l.service.trim()) {
+        const parts = l.service.split(',').map(p => p.trim()).filter(Boolean);
+        for (const p of parts) {
+          const key = p.toLowerCase();
+          if (!map.has(key)) map.set(key, { name: p });
+        }
+      }
+      if (Array.isArray(l.services)) {
+        l.services.forEach(s => {
+          if (typeof s === 'string' && s.trim()) {
+            const parts = s.split(',').map(p => p.trim()).filter(Boolean);
+            for (const p of parts) {
+              const key = p.toLowerCase();
+              if (!map.has(key)) map.set(key, { name: p });
+            }
+          }
+        });
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  }, [services, rawLeads]);
+
   const filteredLeads = leads.filter(l => {
-    const q = leadSearch.toLowerCase();
-    const matchesSearch = !q || l.name.toLowerCase().includes(q) || (l.company || '').toLowerCase().includes(q) || (l.email || '').toLowerCase().includes(q);
-    const matchesService = selectedServiceFilter === 'Tutti' || (l.services && l.services.length > 0 ? l.services.includes(selectedServiceFilter) : l.service === selectedServiceFilter);
+    const q = leadSearch.toLowerCase().trim();
+    const matchesSearch = !q || (l.name || '').toLowerCase().includes(q) || (l.company || '').toLowerCase().includes(q) || (l.email || '').toLowerCase().includes(q);
+    const matchesService = selectedServiceFilter === 'Tutti' || leadMatchesService(l, selectedServiceFilter);
     return matchesSearch && matchesService;
   });
 
@@ -444,27 +530,33 @@ export default function EmailCampaignManager({ onClose, currentUser, onOpenLead 
                 </div>
 
                 {/* Seleziona Rapida per Intera Tipologia */}
-                {services.length > 0 && (
+                {allServiceList.length > 0 && (
                   <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
                         🏷️ Seleziona Intera Tipologia con 1 Click:
                       </span>
-                      <span className="text-[10px] text-slate-400">Clicca per aggiungere/togliere tutti</span>
+                      <span className="text-[10px] text-slate-400">Clicca per aggiungere/togliere destinatari</span>
                     </div>
 
                     <div className="flex flex-wrap gap-1.5">
-                      {services.map(srv => {
-                        const srvLeads = leads.filter(l => l.services?.includes(srv.name) || l.service === srv.name);
+                      {allServiceList.map(srv => {
+                        const totalLeads = rawLeads.filter(l => leadMatchesService(l, srv.name)).length;
+                        const srvLeads = leads.filter(l => leadMatchesService(l, srv.name));
                         const srvLeadIds = srvLeads.map(l => l.id);
                         const isAllSelected = srvLeadIds.length > 0 && srvLeadIds.every(id => selectedLeadIds.includes(id));
                         const isSomeSelected = !isAllSelected && srvLeadIds.some(id => selectedLeadIds.includes(id));
+                        const hasNoEmail = srvLeads.length === 0;
 
                         return (
                           <button
                             key={srv.id || srv.name}
                             type="button"
                             onClick={() => {
+                              if (hasNoEmail) {
+                                alert(`Attenzione: ci sono ${totalLeads} lead con tipologia "${srv.name}" nel CRM, ma nessuno di essi ha un indirizzo email inserito.\n\nPer inviare una campagna a questa tipologia, aggiungi le email nelle rispettive schede lead.`);
+                                return;
+                              }
                               if (isAllSelected) {
                                 // Rimuove tutti i lead di questa tipologia
                                 setSelectedLeadIds(prev => prev.filter(id => !srvLeadIds.includes(id)));
@@ -474,21 +566,33 @@ export default function EmailCampaignManager({ onClose, currentUser, onOpenLead 
                               }
                             }}
                             className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer ${
-                              isAllSelected
+                              hasNoEmail
+                                ? 'bg-amber-50/70 text-amber-800 border-amber-200 hover:bg-amber-100 opacity-90'
+                                : isAllSelected
                                 ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
                                 : isSomeSelected
                                 ? 'bg-indigo-50 text-indigo-700 border-indigo-300'
                                 : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                             }`}
-                            title={`${srvLeads.length} lead con email disponibili per ${srv.name}`}
+                            title={
+                              hasNoEmail
+                                ? `${totalLeads} lead nel CRM per "${srv.name}", ma nessuno ha un'email valida inserita!`
+                                : `${srvLeads.length} lead con email pronti su ${totalLeads} totali nel CRM per "${srv.name}"`
+                            }
                           >
                             <span>{srv.name}</span>
                             <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                              isAllSelected ? 'bg-indigo-800 text-white' : 'bg-slate-100 text-slate-600'
+                              hasNoEmail
+                                ? 'bg-amber-200 text-amber-900'
+                                : isAllSelected
+                                ? 'bg-indigo-800 text-white'
+                                : 'bg-slate-100 text-slate-600'
                             }`}>
-                              {srvLeads.length}
+                              {srvLeads.length}{totalLeads > srvLeads.length ? ` / ${totalLeads}` : ''}
                             </span>
-                            <span className="font-extrabold text-xs">{isAllSelected ? '✓' : '+'}</span>
+                            <span className="font-extrabold text-xs">
+                              {hasNoEmail ? '⚠️' : isAllSelected ? '✓' : '+'}
+                            </span>
                           </button>
                         );
                       })}
@@ -503,23 +607,36 @@ export default function EmailCampaignManager({ onClose, currentUser, onOpenLead 
                       placeholder="Cerca per nome, azienda o email..."
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white" />
                   </div>
-                  {services.length > 0 && (
+                  {allServiceList.length > 0 && (
                     <select
                       value={selectedServiceFilter}
                       onChange={e => setSelectedServiceFilter(e.target.value)}
                       className="border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-700 bg-white cursor-pointer"
                     >
-                      <option value="Tutti">Tipologia: Tutte</option>
-                      {services.map(s => (
-                        <option key={s.id || s.name} value={s.name}>{s.name}</option>
-                      ))}
+                      <option value="Tutti">Tipologia: Tutte ({leads.length})</option>
+                      {allServiceList.map(s => {
+                        const cnt = leads.filter(l => leadMatchesService(l, s.name)).length;
+                        const tot = rawLeads.filter(l => leadMatchesService(l, s.name)).length;
+                        return (
+                          <option key={s.name} value={s.name}>
+                            {s.name} ({cnt} con email{tot > cnt ? ` / ${tot} tot` : ''})
+                          </option>
+                        );
+                      })}
                     </select>
                   )}
                 </div>
 
-                <p className="text-[11px] text-slate-400">
-                  Mostrati {filteredLeads.length} lead su {leads.length} totali con email disponibili.
-                </p>
+                <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+                  <span>
+                    Mostrati <strong className="text-slate-800">{filteredLeads.length}</strong> su <strong className="text-slate-800">{leads.length}</strong> con email valida ({rawLeads.length} totali nel CRM).
+                  </span>
+                  {rawLeads.length > leads.length && (
+                    <span className="text-amber-700 font-medium">
+                      💡 {rawLeads.length - leads.length} lead senza email sono esclusi dalle campagne
+                    </span>
+                  )}
+                </div>
 
                 <div className="border border-slate-200 rounded-2xl overflow-hidden max-h-[380px] overflow-y-auto bg-white">
                   {filteredLeads.length === 0 ? (

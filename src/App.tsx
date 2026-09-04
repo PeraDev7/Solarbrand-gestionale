@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Lead, Colleague, Session } from './types';
 import { useLeads } from './lib/useLeads';
 import { api } from './lib/api';
@@ -18,7 +18,7 @@ import EmailTemplateManager from './components/EmailTemplateManager';
 import SmsTemplateManager from './components/SmsTemplateManager';
 import SmtpSettingsManager from './components/SmtpSettingsManager';
 import ImapSettingsManager from './components/ImapSettingsManager';
-import EmailCampaignManager from './components/EmailCampaignManager';
+import EmailCampaignManager, { leadMatchesService } from './components/EmailCampaignManager';
 import DashboardAlerts from './components/DashboardAlerts';
 import ReportsView from './components/ReportsView';
 
@@ -84,11 +84,40 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
   const [activeColleague, setActiveColleague] = useState<string>(session.name);
   const [services, setServices] = useState<string[]>([]);
 
+  // Combina i servizi configurati nel sistema con tutte le tipologie effettivamente presenti sui lead
+  const allKnownServices = useMemo(() => {
+    const map = new Map<string, string>();
+    services.forEach(s => {
+      if (s?.trim()) map.set(s.trim().toLowerCase(), s.trim());
+    });
+    leads.forEach(l => {
+      if (l.service?.trim()) {
+        const parts = l.service.split(',').map(p => p.trim()).filter(Boolean);
+        parts.forEach(p => {
+          const lower = p.toLowerCase();
+          if (!map.has(lower)) map.set(lower, p);
+        });
+      }
+      if (Array.isArray(l.services)) {
+        l.services.forEach(s => {
+          if (typeof s === 'string' && s.trim()) {
+            const parts = s.split(',').map(p => p.trim()).filter(Boolean);
+            parts.forEach(p => {
+              const lower = p.toLowerCase();
+              if (!map.has(lower)) map.set(lower, p);
+            });
+          }
+        });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  }, [services, leads]);
+
   const activeColleagueObj = colleagueObjects.find(c => c.name === activeColleague);
   const isAdmin = session.role === 'admin' || activeColleagueObj?.role === 'admin';
   const isTelefonistaNonAdmin = !isAdmin && (session.role === 'telefonista' || activeColleagueObj?.role === 'telefonista');
   const availableServices = (isAdmin || !activeColleagueObj?.services || activeColleagueObj.services.length === 0)
-    ? services
+    ? allKnownServices
     : activeColleagueObj.services;
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -164,10 +193,7 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
 
     const matchesStatus = statusFilter === 'Tutti' || lead.status === statusFilter;
     const matchesType = typeFilter === 'Tutti' || lead.type === typeFilter;
-    const leadHasServices = lead.services && lead.services.length > 0;
-    const matchesService = serviceFilter === 'Tutti' 
-      ? true 
-      : (leadHasServices ? lead.services.includes(serviceFilter) : lead.service === serviceFilter);
+    const matchesService = leadMatchesService(lead, serviceFilter);
 
     const matchesTelefonist = isTelefonistaNonAdmin
       ? true
