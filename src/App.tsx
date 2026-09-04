@@ -24,9 +24,26 @@ import ReportsView from './components/ReportsView';
 
 import { 
   Users, User, Phone, MessageSquare, Search, Filter, Plus, Calendar, 
-  Settings, LogIn, LogOut, Check, ArrowRight, PhoneCall, FileText, AlertCircle, Building, ShieldAlert, Briefcase, FileSpreadsheet, Mail, Server, Lock, X, Send
+  Settings, LogIn, LogOut, Check, ArrowRight, PhoneCall, FileText, AlertCircle, Building, ShieldAlert, Briefcase, FileSpreadsheet, Mail, Server, Lock, X, Send,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 
+function getPaginationItems(current: number, total: number): (number | string)[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages: (number | string)[] = [];
+  pages.push(1);
+  if (current > 3) pages.push('...');
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+  if (current < total - 2) pages.push('...');
+  pages.push(total);
+  return pages;
+}
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(auth.getSession());
@@ -154,6 +171,21 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
 
     return matchesSearch && matchesStatus && matchesType && matchesService && matchesTelefonist && matchesAgente;
   });
+
+  const [pageSize, setPageSize] = useState<number>(20);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  // Reset a pagina 1 quando cambiano i filtri o la ricerca
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, typeFilter, serviceFilter, telefonistFilter, agenteFilter]);
+
+  const totalLeads = filteredLeads.length;
+  const totalPages = Math.max(1, Math.ceil(totalLeads / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalLeads);
+  const paginatedLeads = filteredLeads.slice(startIndex, endIndex);
 
   const handleSelectLeadById = (id: string) => {
     const found = leads.find(l => l.id === id);
@@ -329,7 +361,7 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
         </div>
 
         {/* Tab content area */}
-        <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-[500px]">
+        <div className="flex-1 flex flex-col lg:flex-row items-start gap-6 min-h-[500px]">
           
           {currentTab === 'reports' ? (
             <div className="flex-1 w-full min-w-0">
@@ -460,7 +492,7 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
               </div>
 
               {/* Leads List / Table */}
-              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs flex-1">
+              <div id="leads-table-container" className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs flex-1">
                 {loadingLeads ? (
                   <div className="flex justify-center items-center py-20 text-slate-400 text-sm font-medium">
                     Caricamento del portfolio lead dal database...
@@ -472,9 +504,41 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
                   </div>
                 ) : (
                   <>
+                    {/* Barra superiore con conteggio e selettore righe per pagina */}
+                    <div className="px-4 py-3 bg-slate-50/90 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-700">
+                          {totalLeads === 1 ? '1 lead trovato' : `${totalLeads} lead trovati`}
+                        </span>
+                        {totalLeads > 0 && (
+                          <span className="text-slate-400 font-medium">
+                            (mostrati {startIndex + 1}–{endIndex})
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <label htmlFor="pageSizeSelect" className="text-slate-500 font-semibold">Mostra:</label>
+                        <select
+                          id="pageSizeSelect"
+                          value={pageSize}
+                          onChange={(e) => {
+                            setPageSize(Number(e.target.value));
+                            setCurrentPage(1);
+                          }}
+                          className="bg-white border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-2xs"
+                        >
+                          <option value={10}>10 per pagina</option>
+                          <option value={20}>20 per pagina</option>
+                          <option value={50}>50 per pagina</option>
+                          <option value={100}>100 per pagina</option>
+                        </select>
+                      </div>
+                    </div>
+
                     {/* Mobile Card List (visible on small screens < md) */}
                     <div className="block md:hidden space-y-3 p-3 bg-slate-50/50">
-                      {filteredLeads.map((lead) => {
+                      {paginatedLeads.map((lead) => {
                         const isSelected = selectedLead?.id === lead.id;
                         return (
                           <div
@@ -558,7 +622,7 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {filteredLeads.map((lead) => {
+                          {paginatedLeads.map((lead) => {
                             const isSelected = selectedLead?.id === lead.id;
                             return (
                               <tr 
@@ -665,6 +729,101 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
                         </tbody>
                       </table>
                     </div>
+
+                    {/* Paginazione a fondo tabella */}
+                    {totalLeads > 0 && (
+                      <div className="px-4 py-3 bg-slate-50/80 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                        <div className="text-slate-500 font-medium">
+                          Pagina <strong className="text-slate-800">{safeCurrentPage}</strong> di <strong className="text-slate-800">{totalPages}</strong> ({totalLeads} lead totali)
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          {/* Prima pagina */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCurrentPage(1);
+                              document.getElementById('leads-table-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }}
+                            disabled={safeCurrentPage === 1}
+                            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white hover:text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                            title="Prima pagina"
+                          >
+                            <ChevronsLeft className="w-4 h-4" />
+                          </button>
+
+                          {/* Precedente */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCurrentPage(p => Math.max(1, p - 1));
+                              document.getElementById('leads-table-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }}
+                            disabled={safeCurrentPage === 1}
+                            className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white hover:text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors font-semibold flex items-center gap-1"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Precedente</span>
+                          </button>
+
+                          {/* Numeri di pagina */}
+                          <div className="flex items-center gap-1 mx-1">
+                            {getPaginationItems(safeCurrentPage, totalPages).map((p, idx) => {
+                              if (p === '...') {
+                                return <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 font-bold">...</span>;
+                              }
+                              const pageNum = Number(p);
+                              const isActive = pageNum === safeCurrentPage;
+                              return (
+                                <button
+                                  key={pageNum}
+                                  type="button"
+                                  onClick={() => {
+                                    setCurrentPage(pageNum);
+                                    document.getElementById('leads-table-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                  }}
+                                  className={`w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    isActive 
+                                      ? 'bg-indigo-600 text-white shadow-xs' 
+                                      : 'text-slate-600 hover:bg-white hover:text-slate-900'
+                                  }`}
+                                >
+                                  {pageNum}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Successiva */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCurrentPage(p => Math.min(totalPages, p + 1));
+                              document.getElementById('leads-table-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }}
+                            disabled={safeCurrentPage === totalPages}
+                            className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white hover:text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors font-semibold flex items-center gap-1"
+                          >
+                            <span className="hidden sm:inline">Successiva</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Ultima pagina */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCurrentPage(totalPages);
+                              document.getElementById('leads-table-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }}
+                            disabled={safeCurrentPage === totalPages}
+                            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white hover:text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                            title="Ultima pagina"
+                          >
+                            <ChevronsRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -695,7 +854,12 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
 
           {/* Right Detailed Sidebar Drawer */}
           {selectedLead && currentTab === 'leads' && (
-            <div className="flex-shrink-0">
+            <div 
+              className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex justify-end p-2 sm:p-4 lg:p-0 lg:static lg:z-auto lg:bg-transparent lg:w-96 lg:flex-shrink-0 lg:sticky lg:top-20 lg:self-start transition-all"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setSelectedLead(null);
+              }}
+            >
               <LeadDetail
                 lead={selectedLead}
                 activeColleague={activeColleague}

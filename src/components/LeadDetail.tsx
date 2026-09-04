@@ -58,6 +58,15 @@ export default function LeadDetail({
 
   const [attachments, setAttachments] = useState<LeadAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
+
+  const contentScrollRef = React.useRef<HTMLDivElement>(null);
+
+  // Garantisce che all'apertura o cambio lead/tab si parta sempre dalla cima dei dati
+  useEffect(() => {
+    if (contentScrollRef.current) {
+      contentScrollRef.current.scrollTop = 0;
+    }
+  }, [lead.id, activeTab]);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [attachmentDescription, setAttachmentDescription] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -264,7 +273,7 @@ export default function LeadDetail({
   };
 
   return (
-    <div className="w-full lg:w-96 bg-white border border-slate-200 rounded-3xl shadow-sm flex flex-col h-full overflow-hidden">
+    <div className="w-full bg-white border border-slate-200 rounded-3xl shadow-xl lg:shadow-sm flex flex-col h-full lg:h-[calc(100vh-96px)] lg:max-h-[calc(100vh-96px)] overflow-hidden">
       
       {/* Header Drawer */}
       <div className="p-5 border-b border-slate-100 flex justify-between items-start bg-slate-50/50">
@@ -450,7 +459,7 @@ export default function LeadDetail({
       </div>
 
       {/* Tab Panels */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div ref={contentScrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         
         {/* TAB 1: HISTORY & ACTION */}
         {activeTab === 'history' && (

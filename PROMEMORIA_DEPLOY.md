@@ -3,7 +3,7 @@
 > 🟢 **STATO SISTEMA: ONLINE E ATTIVO SU HOSTINGER**  
 > **URL PUBBLICO**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **REPOSITORY GITHUB (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **VERSIONE ATTUALE**: 4.13 — Sistema Unsubscribe GDPR One-Click conforme RFC 8058, Blocco Automatico Invii e Badge Segnalazione nella Scheda Lead
+> **VERSIONE ATTUALE**: 4.14 — Paginazione lista Gestione Lead (10/20/50/100 righe) e Scheda Lead Viewport-Locked (fissa a schermo con scroll interno indipendente)
 
 ---
 

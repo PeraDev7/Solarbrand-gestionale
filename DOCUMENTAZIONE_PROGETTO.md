@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 4.13 (Sistema Unsubscribe GDPR One-Click conforme RFC 8058, separazione email dirette 1-to-1 da campagne massive, blocco automatico e badge lead)  
+> **Versione**: 4.14 (Paginazione lista Gestione Lead con selettore 10/20/50/100 righe e Scheda Lead Viewport-Locked con scroll interno indipendente)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
