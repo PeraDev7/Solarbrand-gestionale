@@ -150,35 +150,41 @@ process.on('SIGTERM', shutdownGracefully);
 
 // ── LEADS ──
 app.get('/api/leads', async (req, res) => {
+  const colleagueId = (req as any).colleagueId;
+  const requester = colleagueId ? (await db.get('SELECT * FROM colleagues WHERE id = ?', [colleagueId]) as any) : null;
+  const isAdmin = requester?.role === 'admin';
+  const isTelefonista = requester?.role === 'telefonista';
+  const isVenditore = requester?.role === 'venditore';
+
   const { vendorName, telefonistName } = req.query;
   let query = 'SELECT * FROM leads';
   let params: any[] = [];
 
-  if (telefonistName) {
-    // Telefonista: vede lead assegnati direttamente a sé (per nome in JSON) OPPURE per servizio
-    const tName = telefonistName as string;
-    const colleague = await db.get('SELECT services FROM colleagues WHERE name = ?', [tName]) as any;
-    const telServices: string[] = parseJsonField(colleague?.services);
-
-    if (telServices.length > 0) {
-      // Lead con il suo nome in assignedTelefonisti OPPURE con un servizio in services
-      const svcPlaceholders = telServices.map(() => '?').join(',');
-      query = `
-        SELECT * FROM leads
-        WHERE JSON_CONTAINS(assignedTelefonisti, JSON_QUOTE(?))
-           OR service IN (${svcPlaceholders})
-           OR EXISTS (
-             SELECT 1 FROM JSON_TABLE(services, '$[*]' COLUMNS (svc TEXT PATH '$')) jt
-             WHERE jt.svc IN (${svcPlaceholders})
-           )
-      `;
-      params = [tName, ...telServices, ...telServices];
+  // 1. Un telefonista NON admin può vedere SOLO ed esclusivamente i lead assegnati a lui
+  if (!isAdmin && isTelefonista && requester?.name) {
+    const tName = requester.name.trim();
+    query = `SELECT * FROM leads WHERE (assignedTelefonisti LIKE ? OR assignedTelefonisti LIKE ?)`;
+    params = [`%"${tName}"%`, `%${tName}%`];
+  } else if (!isAdmin && isVenditore && requester?.name) {
+    // 2. Un venditore NON admin vede solo i lead con sopralluogo assegnato a sé o come assignedColleague
+    const vName = requester.name.trim();
+    query = `
+      SELECT DISTINCT l.* FROM leads l
+      LEFT JOIN appointments a ON a.leadId = l.id
+      WHERE a.assignedVendor = ? OR l.assignedColleague = ?
+    `;
+    params = [vName, vName];
+  } else if (telefonistName && telefonistName !== 'Tutti') {
+    // 3. Filtro esplicito telefonista (ad es. selezionato da un admin)
+    const tName = (telefonistName as string).trim();
+    if (tName === '__unassigned__') {
+      query = `SELECT * FROM leads WHERE (assignedTelefonisti IS NULL OR assignedTelefonisti = '' OR assignedTelefonisti = '[]')`;
     } else {
-      query = `SELECT * FROM leads WHERE JSON_CONTAINS(assignedTelefonisti, JSON_QUOTE(?))`;
-      params = [tName];
+      query = `SELECT * FROM leads WHERE (assignedTelefonisti LIKE ? OR assignedTelefonisti LIKE ?)`;
+      params = [`%"${tName}"%`, `%${tName}%`];
     }
-  } else if (vendorName) {
-    // Venditore (agente): vede lead con sopralluogo assegnato a sé o come assignedColleague
+  } else if (vendorName && vendorName !== 'Tutti') {
+    // 4. Filtro esplicito venditore
     query = `
       SELECT DISTINCT l.* FROM leads l
       LEFT JOIN appointments a ON a.leadId = l.id
@@ -207,8 +213,8 @@ app.post('/api/leads', async (req, res) => {
 
   if (!name) return res.status(400).json({ error: 'name è obbligatorio' });
 
-  // Un telefonista (non admin) NON può assegnare un lead a telefonisti, ma solo ad agenti!
-  const effectiveTelefonisti = isTelefonista ? [] : assignedTelefonisti;
+  // Un telefonista (non admin) assegna automaticamente il nuovo lead a se stesso; solo l'admin può assegnare ad altri
+  const effectiveTelefonisti = isTelefonista ? (requester?.name ? [requester.name] : []) : assignedTelefonisti;
 
   const id = randomUUID();
   const now = new Date().toISOString();

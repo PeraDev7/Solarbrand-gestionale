@@ -86,6 +86,7 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
 
   const activeColleagueObj = colleagueObjects.find(c => c.name === activeColleague);
   const isAdmin = session.role === 'admin' || activeColleagueObj?.role === 'admin';
+  const isTelefonistaNonAdmin = !isAdmin && (session.role === 'telefonista' || activeColleagueObj?.role === 'telefonista');
   const availableServices = (isAdmin || !activeColleagueObj?.services || activeColleagueObj.services.length === 0)
     ? services
     : activeColleagueObj.services;
@@ -94,7 +95,9 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
   const [statusFilter, setStatusFilter] = useState<string>('Tutti');
   const [typeFilter, setTypeFilter] = useState<'Tutti' | 'Lead' | 'Cliente'>('Tutti');
   const [serviceFilter, setServiceFilter] = useState<string>('Tutti');
-  const [telefonistFilter, setTelefonistFilter] = useState<string>('Tutti');
+  const [telefonistFilter, setTelefonistFilter] = useState<string>(
+    session.role === 'telefonista' ? session.name : 'Tutti'
+  );
   const [agenteFilter, setAgenteFilter] = useState<string>('Tutti');
 
   const [currentTab, setCurrentTab] = useState<'leads' | 'calendar' | 'reports'>('leads');
@@ -144,6 +147,15 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
   }, [loadColleagues, loadServices]);
 
   const filteredLeads = leads.filter(lead => {
+    // I telefonisti che NON sono admin vedono SOLO ed esclusivamente i lead assegnati a loro
+    if (isTelefonistaNonAdmin) {
+      const myNameLower = (session.name || '').trim().toLowerCase();
+      const isAssignedToMe = (lead.assignedTelefonisti || []).some(
+        t => t && t.trim().toLowerCase() === myNameLower
+      );
+      if (!isAssignedToMe) return false;
+    }
+
     const matchesSearch = 
       lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (lead.company && lead.company.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -157,11 +169,13 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
       ? true 
       : (leadHasServices ? lead.services.includes(serviceFilter) : lead.service === serviceFilter);
 
-    const matchesTelefonist = telefonistFilter === 'Tutti'
+    const matchesTelefonist = isTelefonistaNonAdmin
       ? true
-      : telefonistFilter === '__unassigned__'
-        ? (!lead.assignedTelefonisti || lead.assignedTelefonisti.length === 0)
-        : (lead.assignedTelefonisti || []).includes(telefonistFilter);
+      : telefonistFilter === 'Tutti'
+        ? true
+        : telefonistFilter === '__unassigned__'
+          ? (!lead.assignedTelefonisti || lead.assignedTelefonisti.length === 0)
+          : (lead.assignedTelefonisti || []).includes(telefonistFilter);
 
     const matchesAgente = agenteFilter === 'Tutti'
       ? true
@@ -439,20 +453,29 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
                   </div>
 
                   {/* Telefonista Filter */}
-                  <div className="flex items-center gap-2 border border-violet-200 rounded-xl px-3 py-1 bg-violet-50 md:max-w-[190px] w-full">
-                    <PhoneCall className="w-4 h-4 text-violet-400 flex-shrink-0" />
-                    <select
-                      value={telefonistFilter}
-                      onChange={(e) => setTelefonistFilter(e.target.value)}
-                      className="bg-transparent border-none text-xs font-bold text-violet-700 focus:outline-none w-full py-1.5 cursor-pointer"
-                    >
-                      <option value="Tutti">Telefonista (Tutti)</option>
-                      <option value="__unassigned__">⚠️ Senza Telefonista</option>
-                      {colleagueObjects.filter(c => c.role !== 'venditore').map(c => (
-                        <option key={c.id} value={c.name}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {!isTelefonistaNonAdmin ? (
+                    <div className="flex items-center gap-2 border border-violet-200 rounded-xl px-3 py-1 bg-violet-50 md:max-w-[190px] w-full">
+                      <PhoneCall className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                      <select
+                        value={telefonistFilter}
+                        onChange={(e) => setTelefonistFilter(e.target.value)}
+                        className="bg-transparent border-none text-xs font-bold text-violet-700 focus:outline-none w-full py-1.5 cursor-pointer"
+                      >
+                        <option value="Tutti">Telefonista (Tutti)</option>
+                        <option value="__unassigned__">⚠️ Senza Telefonista</option>
+                        {colleagueObjects.filter(c => c.role !== 'venditore').map(c => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 border border-violet-200 rounded-xl px-3 py-1 bg-violet-50 md:max-w-[210px] w-full">
+                      <PhoneCall className="w-4 h-4 text-violet-500 flex-shrink-0" />
+                      <span className="text-xs font-extrabold text-violet-700 truncate" title={`I tuoi lead assegnati (${session.name})`}>
+                        📞 I Tuoi Lead ({session.name})
+                      </span>
+                    </div>
+                  )}
 
                   {/* Agente Filter */}
                   <div className="flex items-center gap-2 border border-amber-200 rounded-xl px-3 py-1 bg-amber-50 md:max-w-[190px] w-full">

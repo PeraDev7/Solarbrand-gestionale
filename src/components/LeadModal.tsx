@@ -96,7 +96,7 @@ export default function LeadModal({ lead, colleagueObjects, services, activeColl
         service: selectedServices[0] || '',
         services: selectedServices,
         assignedColleague: assignedColleague,
-        assignedTelefonisti: isTelefonista ? (lead?.assignedTelefonisti || []) : assignedTelefonisti,
+        assignedTelefonisti: isTelefonista ? (lead?.assignedTelefonisti || (activeColleague ? [activeColleague] : [])) : assignedTelefonisti,
         notes: initialNotes.trim(),
         address: address.trim(),
       };

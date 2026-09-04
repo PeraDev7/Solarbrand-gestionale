@@ -25109,30 +25109,35 @@ function shutdownGracefully() {
 process.on("SIGINT", shutdownGracefully);
 process.on("SIGTERM", shutdownGracefully);
 app.get("/api/leads", async (req, res) => {
+  const colleagueId = req.colleagueId;
+  const requester = colleagueId ? await db.get("SELECT * FROM colleagues WHERE id = ?", [colleagueId]) : null;
+  const isAdmin = requester?.role === "admin";
+  const isTelefonista = requester?.role === "telefonista";
+  const isVenditore = requester?.role === "venditore";
   const { vendorName, telefonistName } = req.query;
   let query = "SELECT * FROM leads";
   let params = [];
-  if (telefonistName) {
-    const tName = telefonistName;
-    const colleague = await db.get("SELECT services FROM colleagues WHERE name = ?", [tName]);
-    const telServices = parseJsonField(colleague?.services);
-    if (telServices.length > 0) {
-      const svcPlaceholders = telServices.map(() => "?").join(",");
-      query = `
-        SELECT * FROM leads
-        WHERE JSON_CONTAINS(assignedTelefonisti, JSON_QUOTE(?))
-           OR service IN (${svcPlaceholders})
-           OR EXISTS (
-             SELECT 1 FROM JSON_TABLE(services, '$[*]' COLUMNS (svc TEXT PATH '$')) jt
-             WHERE jt.svc IN (${svcPlaceholders})
-           )
-      `;
-      params = [tName, ...telServices, ...telServices];
+  if (!isAdmin && isTelefonista && requester?.name) {
+    const tName = requester.name.trim();
+    query = `SELECT * FROM leads WHERE (assignedTelefonisti LIKE ? OR assignedTelefonisti LIKE ?)`;
+    params = [`%"${tName}"%`, `%${tName}%`];
+  } else if (!isAdmin && isVenditore && requester?.name) {
+    const vName = requester.name.trim();
+    query = `
+      SELECT DISTINCT l.* FROM leads l
+      LEFT JOIN appointments a ON a.leadId = l.id
+      WHERE a.assignedVendor = ? OR l.assignedColleague = ?
+    `;
+    params = [vName, vName];
+  } else if (telefonistName && telefonistName !== "Tutti") {
+    const tName = telefonistName.trim();
+    if (tName === "__unassigned__") {
+      query = `SELECT * FROM leads WHERE (assignedTelefonisti IS NULL OR assignedTelefonisti = '' OR assignedTelefonisti = '[]')`;
     } else {
-      query = `SELECT * FROM leads WHERE JSON_CONTAINS(assignedTelefonisti, JSON_QUOTE(?))`;
-      params = [tName];
+      query = `SELECT * FROM leads WHERE (assignedTelefonisti LIKE ? OR assignedTelefonisti LIKE ?)`;
+      params = [`%"${tName}"%`, `%${tName}%`];
     }
-  } else if (vendorName) {
+  } else if (vendorName && vendorName !== "Tutti") {
     query = `
       SELECT DISTINCT l.* FROM leads l
       LEFT JOIN appointments a ON a.leadId = l.id
@@ -25169,7 +25174,7 @@ app.post("/api/leads", async (req, res) => {
     source = "manual"
   } = req.body;
   if (!name) return res.status(400).json({ error: "name \xE8 obbligatorio" });
-  const effectiveTelefonisti = isTelefonista ? [] : assignedTelefonisti;
+  const effectiveTelefonisti = isTelefonista ? requester?.name ? [requester.name] : [] : assignedTelefonisti;
   const id = randomUUID();
   const now = (/* @__PURE__ */ new Date()).toISOString();
   await db.run(`
