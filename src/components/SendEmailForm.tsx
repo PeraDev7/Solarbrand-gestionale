@@ -176,6 +176,7 @@ export default function SendEmailForm({ lead, onClose }: SendEmailFormProps) {
         smtpPort: acc.port,
         smtpUser: acc.user,
         smtpPass: acc.pass,
+        fromName: acc.name || 'Solar Brand',
         to: toEmail,
         subject,
         body,

@@ -947,7 +947,7 @@ app.delete('/api/smtp-accounts/:id', async (req, res) => {
 
 app.post('/api/send-email', async (req, res) => {
   try {
-    const { smtpHost, smtpPort, smtpUser, smtpPass, to, subject, body, attachments } = req.body;
+    const { smtpHost, smtpPort, smtpUser, smtpPass, fromName, to, subject, body, attachments } = req.body;
     if (!smtpHost || !smtpPort || !smtpUser || !smtpPass || !to || !subject || !body) {
       return res.status(400).json({ error: 'Campi mancanti' });
     }
@@ -957,15 +957,15 @@ app.post('/api/send-email', async (req, res) => {
       secure: Number(smtpPort) === 465,
       auth: { user: smtpUser, pass: smtpPass },
     });
+
+    const senderDisplayName = fromName && fromName.trim() ? fromName.trim() : 'Solar Brand';
     const info = await transporter.sendMail({
-      from: `"${smtpUser.split('@')[0]}" <${smtpUser}>`,
+      from: `"${senderDisplayName}" <${smtpUser}>`,
+      replyTo: smtpUser,
       to,
       subject,
       html: body,
       text: htmlToText(body),
-      headers: {
-        'List-Unsubscribe': `<mailto:${smtpUser}?subject=Unsubscribe>`,
-      },
       attachments: (attachments || []).map((a: any) => {
         if (a.path) {
           return { filename: a.filename, path: a.path };
