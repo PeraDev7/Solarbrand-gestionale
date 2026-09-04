@@ -10,6 +10,51 @@ import { hashPassword, verifyPassword } from './src/lib/passwords.js';
 import { buildSearchStrings, buildLocationQuery, buildActorInput, startApifyRun, parseGoogleMapsItems } from './src/lib/google-maps-scraper.js';
 import { createJob, getJob, updateJob } from './src/lib/scraper-jobs.js';
 
+// ── EMAIL HELPER FUNCTIONS ──
+/** Converte HTML in testo plain per l'alternativa text/plain delle email */
+function htmlToText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/**
+ * Codifica recipientId + URL di destinazione in un token base64url compatto
+ * da usare nell'endpoint /t/:token (click tracking pulito)
+ */
+function makeClickToken(recipientId: string, destUrl: string): string {
+  return Buffer.from(`${recipientId}|${destUrl}`).toString('base64url');
+}
+
+/**
+ * Decodifica il token prodotto da makeClickToken
+ * Ritorna null se il token non è valido
+ */
+function decodeClickToken(token: string): { recipientId: string; url: string } | null {
+  try {
+    const decoded = Buffer.from(token, 'base64url').toString('utf8');
+    const pipeIdx = decoded.indexOf('|');
+    if (pipeIdx === -1) return null;
+    return { recipientId: decoded.slice(0, pipeIdx), url: decoded.slice(pipeIdx + 1) };
+  } catch {
+    return null;
+  }
+}
+
+
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
@@ -213,10 +258,11 @@ async function sendSystemEmail(to: string, subject: string, body: string): Promi
       auth: { user: smtp.user_email, pass: smtp.pass },
     });
     await transporter.sendMail({
-      from: smtp.user_email,
+      from: `"SolarBrand" <${smtp.user_email}>`,
       to,
       subject,
       html: body,
+      text: htmlToText(body),
     });
     return true;
   } catch (err) {
@@ -884,10 +930,11 @@ app.post('/api/send-email', async (req, res) => {
       auth: { user: smtpUser, pass: smtpPass },
     });
     const info = await transporter.sendMail({
-      from: smtpUser,
+      from: `"${smtpUser.split('@')[0]}" <${smtpUser}>`,
       to,
       subject,
       html: body,
+      text: htmlToText(body),
       attachments: (attachments || []).map((a: any) => {
         if (a.path) {
           return { filename: a.filename, path: a.path };
@@ -1989,14 +2036,14 @@ app.post('/api/email-campaigns/:id/send', async (req, res) => {
           rawContent = rawContent.replace(/\r\n/g, '<br/>').replace(/\n/g, '<br/>');
         }
 
-        // Rewrite all <a href="..."> links for click tracking
-        rawContent = rawContent.replace(/href="(https?:\/\/[^"]+)"/gi, (match: string, url: string) => {
-          const trackUrl = `${baseUrl}/api/email-track/click?eid=${encodeURIComponent(r.id)}&url=${encodeURIComponent(url)}`;
-          return `href="${trackUrl}"`;
+        // Rewrite all <a href="..."> links for click tracking — URL puliti /t/{token}
+        rawContent = rawContent.replace(/href="(https?:\/\/[^"]+)"/gi, (_match: string, url: string) => {
+          const token = makeClickToken(r.id, url);
+          return `href="${baseUrl}/t/${token}"`;
         });
 
-        // Open tracking pixel
-        const pixelUrl = `${baseUrl}/api/email-track/open?eid=${encodeURIComponent(r.id)}`;
+        // Open tracking pixel — endpoint pulito /p/{eid}
+        const pixelUrl = `${baseUrl}/p/${encodeURIComponent(r.id)}`;
         const pixelTag = `<img src="${pixelUrl}" width="1" height="1" border="0" alt="" style="height:1px!important;width:1px!important;border:0!important;margin:0!important;padding:0!important;outline:none!important;" />`;
 
         // Wrap in full standard HTML email structure
@@ -2022,14 +2069,17 @@ app.post('/api/email-campaigns/:id/send', async (req, res) => {
           .replace(/\{azienda\}/g, company)
           .replace(/\{agente\}/g, '');
 
+        // Display name mittente: usa smtp.name se disponibile, altrimenti l'indirizzo raw
+        const fromDisplay = smtp.name ? `"${smtp.name}" <${smtp.user_email}>` : smtp.user_email;
+
         const info = await transporter.sendMail({
-          from: smtp.user_email,
+          from: fromDisplay,
           to: r.email,
           subject: finalSubject,
           html: finalBody,
+          text: htmlToText(finalBody),
           headers: {
-            'X-Campaign-Id': campaign.id,
-            'X-Recipient-Id': r.id,
+            'List-Unsubscribe': `<mailto:${smtp.user_email}?subject=Unsubscribe>`,
           },
         });
 
@@ -2086,6 +2136,69 @@ const TRACKING_PIXEL = Buffer.from(
   'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
   'base64'
 );
+
+// ── NUOVI ENDPOINT TRACKING (URL puliti, non sospetti per filtri antispam) ──
+
+/** Open tracking: /p/{eid}  — pixel 1×1 GIF trasparente */
+app.get('/p/:eid', async (req, res) => {
+  res.set('Content-Type', 'image/gif');
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.send(TRACKING_PIXEL);
+
+  process.nextTick(async () => {
+    const { eid } = req.params;
+    if (!eid) return;
+    try {
+      const r = await db.get('SELECT * FROM email_campaign_recipients WHERE id = ?', [eid]) as any;
+      if (r && !r.openedAt) {
+        const now = new Date().toISOString();
+        await db.run('UPDATE email_campaign_recipients SET openedAt = ? WHERE id = ?', [now, eid]);
+        await db.run('UPDATE email_campaigns SET totalOpened = totalOpened + 1 WHERE id = ?', [r.campaignId]);
+        const campaignName = (await db.get('SELECT name FROM email_campaigns WHERE id=?', [r.campaignId]) as any)?.name || '';
+        const lead = await db.get('SELECT * FROM leads WHERE id = ?', [r.leadId]) as any;
+        await db.run('INSERT INTO history (id, leadId, timestamp, colleague, note, statusAfterCall, type) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [randomUUID(), r.leadId, now, 'Tracking Email', `👁️ [EMAIL APERTA] Il lead ha aperto l'email della campagna "${campaignName}"`, lead?.status || '', 'email']);
+        console.log(`[TRACKING OPEN] Lead ${r.leadId} ha aperto l'email campagna ${r.campaignId}`);
+      }
+    } catch (e) {
+      console.error('[/p/ open]', e);
+    }
+  });
+});
+
+/** Click tracking: /t/{token}  — redirect all'URL originale */
+app.get('/t/:token', async (req, res) => {
+  const decoded = decodeClickToken(req.params.token);
+  const targetUrl = decoded?.url || '/';
+
+  if (decoded) {
+    const { recipientId } = decoded;
+    try {
+      const r = await db.get('SELECT * FROM email_campaign_recipients WHERE id = ?', [recipientId]) as any;
+      if (r) {
+        const now = new Date().toISOString();
+        if (!r.openedAt) {
+          await db.run('UPDATE email_campaign_recipients SET openedAt = ? WHERE id = ?', [now, recipientId]);
+          await db.run('UPDATE email_campaigns SET totalOpened = totalOpened + 1 WHERE id = ?', [r.campaignId]);
+        }
+        if (!r.clickedAt) {
+          await db.run('UPDATE email_campaign_recipients SET clickedAt = ? WHERE id = ?', [now, recipientId]);
+          await db.run('UPDATE email_campaigns SET totalClicked = totalClicked + 1 WHERE id = ?', [r.campaignId]);
+        }
+        const lead = await db.get('SELECT * FROM leads WHERE id = ?', [r.leadId]) as any;
+        await db.run('INSERT INTO history (id, leadId, timestamp, colleague, note, statusAfterCall, type) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [randomUUID(), r.leadId, now, 'Tracking Email', `🖱️ [LINK CLICCATO] Il lead ha cliccato un link nell'email → ${targetUrl}`, lead?.status || '', 'email']);
+        console.log(`[TRACKING CLICK] Lead ${r.leadId} ha cliccato nell'email campagna ${r.campaignId}`);
+      }
+    } catch (e) {
+      console.error('[/t/ click]', e);
+    }
+  }
+
+  res.redirect(302, targetUrl);
+});
+
+// ── VECCHI ENDPOINT TRACKING (mantenuti per retrocompatibilità con email già inviate) ──
 
 app.get('/api/email-track/open', async (req, res) => {
   const { eid } = req.query as { eid: string };

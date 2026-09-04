@@ -25022,6 +25022,22 @@ function updateJob(jobId, patch) {
 }
 
 // server.ts
+function htmlToText(html) {
+  return html.replace(/<br\s*\/?>/gi, "\n").replace(/<\/p>/gi, "\n\n").replace(/<\/div>/gi, "\n").replace(/<\/h[1-6]>/gi, "\n\n").replace(/<\/li>/gi, "\n").replace(/<li[^>]*>/gi, "\u2022 ").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\n{3,}/g, "\n\n").trim();
+}
+function makeClickToken(recipientId, destUrl) {
+  return Buffer.from(`${recipientId}|${destUrl}`).toString("base64url");
+}
+function decodeClickToken(token) {
+  try {
+    const decoded = Buffer.from(token, "base64url").toString("utf8");
+    const pipeIdx = decoded.indexOf("|");
+    if (pipeIdx === -1) return null;
+    return { recipientId: decoded.slice(0, pipeIdx), url: decoded.slice(pipeIdx + 1) };
+  } catch {
+    return null;
+  }
+}
 var app = (0, import_express.default)();
 var PORT = Number(process.env.PORT) || 3e3;
 var DEMO_MODE = process.env.DEMO_MODE !== "false";
@@ -25192,10 +25208,11 @@ async function sendSystemEmail(to, subject, body) {
       auth: { user: smtp.user_email, pass: smtp.pass }
     });
     await transporter.sendMail({
-      from: smtp.user_email,
+      from: `"SolarBrand" <${smtp.user_email}>`,
       to,
       subject,
-      html: body
+      html: body,
+      text: htmlToText(body)
     });
     return true;
   } catch (err) {
@@ -25764,10 +25781,11 @@ app.post("/api/send-email", async (req, res) => {
       auth: { user: smtpUser, pass: smtpPass }
     });
     const info = await transporter.sendMail({
-      from: smtpUser,
+      from: `"${smtpUser.split("@")[0]}" <${smtpUser}>`,
       to,
       subject,
       html: body,
+      text: htmlToText(body),
       attachments: (attachments || []).map((a) => {
         if (a.path) {
           return { filename: a.filename, path: a.path };
@@ -26704,11 +26722,11 @@ app.post("/api/email-campaigns/:id/send", async (req, res) => {
           if (!hasHtmlTags) {
             rawContent = rawContent.replace(/\r\n/g, "<br/>").replace(/\n/g, "<br/>");
           }
-          rawContent = rawContent.replace(/href="(https?:\/\/[^"]+)"/gi, (match, url) => {
-            const trackUrl = `${baseUrl}/api/email-track/click?eid=${encodeURIComponent(r.id)}&url=${encodeURIComponent(url)}`;
-            return `href="${trackUrl}"`;
+          rawContent = rawContent.replace(/href="(https?:\/\/[^"]+)"/gi, (_match, url) => {
+            const token = makeClickToken(r.id, url);
+            return `href="${baseUrl}/t/${token}"`;
           });
-          const pixelUrl = `${baseUrl}/api/email-track/open?eid=${encodeURIComponent(r.id)}`;
+          const pixelUrl = `${baseUrl}/p/${encodeURIComponent(r.id)}`;
           const pixelTag = `<img src="${pixelUrl}" width="1" height="1" border="0" alt="" style="height:1px!important;width:1px!important;border:0!important;margin:0!important;padding:0!important;outline:none!important;" />`;
           let finalBody = "";
           if (rawContent.includes("</body>")) {
@@ -26727,14 +26745,15 @@ app.post("/api/email-campaigns/:id/send", async (req, res) => {
 </html>`;
           }
           const finalSubject = template.subject.replace(/\{nome\}/g, leadName).replace(/\{azienda\}/g, company).replace(/\{agente\}/g, "");
+          const fromDisplay = smtp.name ? `"${smtp.name}" <${smtp.user_email}>` : smtp.user_email;
           const info = await transporter.sendMail({
-            from: smtp.user_email,
+            from: fromDisplay,
             to: r.email,
             subject: finalSubject,
             html: finalBody,
+            text: htmlToText(finalBody),
             headers: {
-              "X-Campaign-Id": campaign.id,
-              "X-Recipient-Id": r.id
+              "List-Unsubscribe": `<mailto:${smtp.user_email}?subject=Unsubscribe>`
             }
           });
           const messageId = info.messageId || "";
@@ -26778,6 +26797,62 @@ var TRACKING_PIXEL = Buffer.from(
   "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
   "base64"
 );
+app.get("/p/:eid", async (req, res) => {
+  res.set("Content-Type", "image/gif");
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.send(TRACKING_PIXEL);
+  process.nextTick(async () => {
+    const { eid } = req.params;
+    if (!eid) return;
+    try {
+      const r = await db.get("SELECT * FROM email_campaign_recipients WHERE id = ?", [eid]);
+      if (r && !r.openedAt) {
+        const now = (/* @__PURE__ */ new Date()).toISOString();
+        await db.run("UPDATE email_campaign_recipients SET openedAt = ? WHERE id = ?", [now, eid]);
+        await db.run("UPDATE email_campaigns SET totalOpened = totalOpened + 1 WHERE id = ?", [r.campaignId]);
+        const campaignName = (await db.get("SELECT name FROM email_campaigns WHERE id=?", [r.campaignId]))?.name || "";
+        const lead = await db.get("SELECT * FROM leads WHERE id = ?", [r.leadId]);
+        await db.run(
+          "INSERT INTO history (id, leadId, timestamp, colleague, note, statusAfterCall, type) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          [randomUUID(), r.leadId, now, "Tracking Email", `\u{1F441}\uFE0F [EMAIL APERTA] Il lead ha aperto l'email della campagna "${campaignName}"`, lead?.status || "", "email"]
+        );
+        console.log(`[TRACKING OPEN] Lead ${r.leadId} ha aperto l'email campagna ${r.campaignId}`);
+      }
+    } catch (e) {
+      console.error("[/p/ open]", e);
+    }
+  });
+});
+app.get("/t/:token", async (req, res) => {
+  const decoded = decodeClickToken(req.params.token);
+  const targetUrl = decoded?.url || "/";
+  if (decoded) {
+    const { recipientId } = decoded;
+    try {
+      const r = await db.get("SELECT * FROM email_campaign_recipients WHERE id = ?", [recipientId]);
+      if (r) {
+        const now = (/* @__PURE__ */ new Date()).toISOString();
+        if (!r.openedAt) {
+          await db.run("UPDATE email_campaign_recipients SET openedAt = ? WHERE id = ?", [now, recipientId]);
+          await db.run("UPDATE email_campaigns SET totalOpened = totalOpened + 1 WHERE id = ?", [r.campaignId]);
+        }
+        if (!r.clickedAt) {
+          await db.run("UPDATE email_campaign_recipients SET clickedAt = ? WHERE id = ?", [now, recipientId]);
+          await db.run("UPDATE email_campaigns SET totalClicked = totalClicked + 1 WHERE id = ?", [r.campaignId]);
+        }
+        const lead = await db.get("SELECT * FROM leads WHERE id = ?", [r.leadId]);
+        await db.run(
+          "INSERT INTO history (id, leadId, timestamp, colleague, note, statusAfterCall, type) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          [randomUUID(), r.leadId, now, "Tracking Email", `\u{1F5B1}\uFE0F [LINK CLICCATO] Il lead ha cliccato un link nell'email \u2192 ${targetUrl}`, lead?.status || "", "email"]
+        );
+        console.log(`[TRACKING CLICK] Lead ${r.leadId} ha cliccato nell'email campagna ${r.campaignId}`);
+      }
+    } catch (e) {
+      console.error("[/t/ click]", e);
+    }
+  }
+  res.redirect(302, targetUrl);
+});
 app.get("/api/email-track/open", async (req, res) => {
   const { eid } = req.query;
   res.set("Content-Type", "image/gif");

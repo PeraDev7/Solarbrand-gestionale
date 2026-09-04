@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 4.10.3 (Fix IMAP Scanner: gestione sicura messaggi casella e prevenzione errore 'Command failed' su caselle vuote/Hostinger)  
+> **Versione**: 4.11 (Deliverability Email & Anti-Spam: Tracking pulito /p/ e /t/, Multipart text/plain, List-Unsubscribe, From display name)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
@@ -202,6 +202,21 @@ L'applicazione supporta il flusso operativo aziendale completo con tre livelli d
 3. **`index.html`**: Aggiunto `translate="no"` e `lang="it"` al tag `<html>` — impedisce a Google Translate e simili di modificare il DOM dell'applicazione, prevenendo il conflitto alla radice.
 
 > **💡 Lezione Appresa**: Se un'app React crasha solo su un browser/PC specifico, sospettare sempre le **estensioni del browser** (Google Translate, Grammarly, LastPass, uBlock Origin). Il sintomo tipico è `insertBefore` / `removeChild` su `Node`. La fix è `translate="no"` sull'`<html>`.
+
+### 2.12 Ottimizzazione Anti-Spam & Cattura Azioni Lead Pulita (v4.11)
+Per evitare che i filtri antispam (Gmail, Outlook, Yahoo) classifichino le email inviate dal gestionale come spam/phishing mantenendo contemporaneamente al 100% il tracciamento delle azioni dei lead (apertura email, click sui link e risposte):
+1. **Endpoint di Tracking Puliti**:
+   - Apertura email: `/p/:eid` invece del sospetto `/api/email-track/open?eid=...` (GIF trasparente 1x1 con header anti-cache).
+   - Click sui link: `/t/:token` invece del redirect esplicito `/api/email-track/click?url=...` (il token base64url crittografato include recipientId e destinazione, senza rivelare parametri query sospetti).
+   - Mantenimento retrocompatibilità automatica con i vecchi endpoint per email già consegnate.
+2. **Generazione Automatica Alternativa `text/plain`**:
+   - Converte il codice HTML in testo formattato puro via `htmlToText()`, inviando email multipart (fondamentale per reputazione mittente e compatibilità).
+3. **Display Name Mittente Corretto**:
+   - Formattazione standard `"Nome" <email@dominio.it>` (es. `"SolarBrand KG" <info@solarbrandkg.it>`) anziché raw email string.
+4. **Header `List-Unsubscribe` Conforme**:
+   - Header `mailto:` integrato nativamente su ogni invio campagna, allineandosi ai requisiti per mittenti di massa Gmail/Yahoo 2024.
+5. **Rimozione Header Personalizzati Sospetti**:
+   - Eliminati header `X-Campaign-Id` e `X-Recipient-Id` che fungevano da signature di invio di massa non autenticato.
 
 ---
 
