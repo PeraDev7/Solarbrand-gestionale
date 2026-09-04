@@ -213,7 +213,10 @@ export default function LeadDetail({
   };
 
   const handleSaveAppointment = async () => {
-    if (!calendarDateTime) return alert('Seleziona data e ora');
+    if (!calendarDateTime || !calendarDateTime.trim()) {
+      setCalendarError('⚠️ Seleziona sia la data che l\'ora completa dell\'appuntamento (inclusi i minuti).');
+      return;
+    }
     setSavingCalendar(true);
     setCalendarError('');
     setCalendarSuccess(false);
@@ -665,9 +668,15 @@ export default function LeadDetail({
               <input
                 type="datetime-local"
                 value={calendarDateTime}
-                onChange={e => setCalendarDateTime(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 text-xs font-bold rounded-xl p-2.5 text-slate-800"
+                onChange={e => {
+                  setCalendarDateTime(e.target.value);
+                  if (calendarError) setCalendarError('');
+                }}
+                className="w-full bg-slate-50 border border-slate-200 text-xs font-bold rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
+              <span className="text-[10px] text-slate-400 mt-1 block">
+                Assicurati di selezionare data e ora completa (ore e minuti).
+              </span>
             </div>
 
             <div>
@@ -677,12 +686,15 @@ export default function LeadDetail({
                 onChange={e => setCalendarNotes(e.target.value)}
                 rows={2}
                 placeholder="Dettagli appuntamento..."
-                className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl p-2.5 text-slate-800"
+                className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
 
             {calendarError && (
-              <p className="text-xs text-rose-500 font-semibold">{calendarError}</p>
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                <span>{calendarError}</span>
+              </div>
             )}
 
             {calendarSuccess && (

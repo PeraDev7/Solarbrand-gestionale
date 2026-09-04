@@ -2072,11 +2072,29 @@ app.post('/api/email-campaigns/:id/send', async (req, res) => {
           rawContent = rawContent.replace(/\r\n/g, '<br/>').replace(/\n/g, '<br/>');
         }
 
-        // Rewrite all <a href="..."> links for click tracking — URL puliti /t/{token}
-        rawContent = rawContent.replace(/href="(https?:\/\/[^"]+)"/gi, (_match: string, url: string) => {
-          const token = makeClickToken(r.id, url);
-          return `href="${baseUrl}/t/${token}"`;
-        });
+        // 1. Riscrivi tutti i tag <a ... href="..."> esistenti per il click tracking (/t/:token)
+        rawContent = rawContent.replace(
+          /<a\b([^>]*?)\bhref=(["'])(https?:\/\/[^"'\s>]+)\2([^>]*)>/gi,
+          (fullMatch: string, before: string, _q: string, url: string, after: string) => {
+            if (url.includes('/u/') || url.includes('/t/') || url.includes('/p/')) return fullMatch;
+            const token = makeClickToken(r.id, url);
+            return `<a${before}href="${baseUrl}/t/${token}"${after}>`;
+          }
+        );
+
+        // 2. Auto-linka gli URL in testo puro (escludendo quelli già dentro un tag <a>...</a>)
+        rawContent = rawContent.replace(
+          /(<a\b[^>]*>[\s\S]*?<\/a>)|((?:https?:\/\/)[^\s<"']+)/gi,
+          (match: string, aTag: string, plainUrl: string) => {
+            if (aTag) return aTag; // Già contenuto in un tag <a>, non toccare
+            if (plainUrl) {
+              if (plainUrl.includes('/u/') || plainUrl.includes('/t/') || plainUrl.includes('/p/')) return plainUrl;
+              const token = makeClickToken(r.id, plainUrl);
+              return `<a href="${baseUrl}/t/${token}" style="color: #4f46e5; text-decoration: underline;">${plainUrl}</a>`;
+            }
+            return match;
+          }
+        );
 
         // Open tracking pixel — endpoint pulito /p/{eid}
         const pixelUrl = `${baseUrl}/p/${encodeURIComponent(r.id)}`;
@@ -2265,6 +2283,16 @@ const handleUnsubscribe = async (req: express.Request, res: express.Response) =>
       if (r) {
         emailAddr = r.email;
         const now = new Date().toISOString();
+
+        // Se hanno aperto e cliccato sul link di disiscrizione, registra l'apertura e il click se non ancora presenti
+        if (!r.openedAt) {
+          await db.run('UPDATE email_campaign_recipients SET openedAt = ? WHERE id = ?', [now, recipientId]);
+          await db.run('UPDATE email_campaigns SET totalOpened = totalOpened + 1 WHERE id = ?', [r.campaignId]);
+        }
+        if (!r.clickedAt) {
+          await db.run('UPDATE email_campaign_recipients SET clickedAt = ? WHERE id = ?', [now, recipientId]);
+          await db.run('UPDATE email_campaigns SET totalClicked = totalClicked + 1 WHERE id = ?', [r.campaignId]);
+        }
 
         // 1. Marca il lead come unsubscribed = 1
         await db.run('UPDATE leads SET unsubscribed = 1, updatedAt = ? WHERE id = ?', [now, r.leadId]);
@@ -2483,9 +2511,9 @@ async function runImapCheck(account: any): Promise<{ repliesFound: number; inbox
         return { repliesFound: 0, inboxMatches: 0 };
       }
 
-      // Cutoff: solo messaggi dopo l'ultimo check (o ultimi 7 giorni se primo avvio)
+      // Cutoff: messaggi dopo l'ultimo check con 10 min di margine (o ultimi 7 giorni se primo avvio)
       const sinceDate = account.lastChecked
-        ? new Date(account.lastChecked)
+        ? new Date(new Date(account.lastChecked).getTime() - 10 * 60 * 1000)
         : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
       // Fetch i messaggi fino a existsCount con solo headers (leggero) e filtra per data lato JS
@@ -2603,6 +2631,29 @@ async function runImapCheck(account: any): Promise<{ repliesFound: number; inbox
         );
         console.log(`[INBOX SCANNER] Email da "${senderEmail}" abbinata al lead "${matchedLead.name}"`);
         inboxMatches++;
+
+        // Controlla se questo lead è destinatario di una campagna in attesa di risposta
+        try {
+          const pendingRecipient = await db.get(
+            `SELECT * FROM email_campaign_recipients 
+             WHERE leadId = ? AND (repliedAt IS NULL OR repliedAt = '')
+             ORDER BY sentAt DESC LIMIT 1`,
+            [matchedLead.id]
+          ) as any;
+
+          if (pendingRecipient) {
+            if (!pendingRecipient.openedAt) {
+              await db.run('UPDATE email_campaign_recipients SET openedAt = ? WHERE id = ?', [now, pendingRecipient.id]);
+              await db.run('UPDATE email_campaigns SET totalOpened = totalOpened + 1 WHERE id = ?', [pendingRecipient.campaignId]);
+            }
+            await db.run('UPDATE email_campaign_recipients SET repliedAt = ?, replyText = ? WHERE id = ?', [now, bodyText.slice(0, 500), pendingRecipient.id]);
+            await db.run('UPDATE email_campaigns SET totalReplied = totalReplied + 1 WHERE id = ?', [pendingRecipient.campaignId]);
+            repliesFound++;
+            console.log(`[IMAP PART 2] Risposta campagna registrata per lead ${matchedLead.id} (${matchedLead.name})`);
+          }
+        } catch (campErr) {
+          console.error('[IMAP PART 2 Campagna update err]', campErr);
+        }
       }
 
     } finally {
@@ -2620,11 +2671,31 @@ async function runImapCheck(account: any): Promise<{ repliesFound: number; inbox
   return { repliesFound, inboxMatches };
 }
 
-// ── IMAP POLLING JOB (every 10 min) ──
+// ── ENDPOINT CONTROLLO IMMEDIATO RISPOSTE TUTTE LE CASELLE IMAP ──
+app.post('/api/email-campaigns/check-replies', async (req, res) => {
+  try {
+    const accounts = await db.all('SELECT * FROM imap_accounts', []) as any[];
+    if (accounts.length === 0) {
+      return res.status(400).json({ error: 'Nessun account IMAP configurato' });
+    }
+    let totalReplies = 0;
+    let totalInbox = 0;
+    for (const acc of accounts) {
+      const { repliesFound, inboxMatches } = await runImapCheck(acc);
+      totalReplies += repliesFound;
+      totalInbox += inboxMatches;
+    }
+    res.json({ ok: true, repliesFound: totalReplies, inboxMatches: totalInbox });
+  } catch (err: any) {
+    console.error('[/api/email-campaigns/check-replies error]', err);
+    res.status(500).json({ error: err?.message || 'Errore IMAP' });
+  }
+});
+
+// ── IMAP POLLING JOB (every 1 min) ──
 setInterval(async () => {
   const accounts = await db.all('SELECT * FROM imap_accounts', []) as any[];
   if (accounts.length === 0) return;
-  console.log(`[IMAP POLL] Controllo ${accounts.length} account IMAP...`);
   for (const acc of accounts) {
     try {
       const { repliesFound, inboxMatches } = await runImapCheck(acc);
@@ -2634,7 +2705,7 @@ setInterval(async () => {
       console.error(`[IMAP POLL] Errore account ${acc.name}:`, e);
     }
   }
-}, 10 * 60 * 1000); // 10 minutes
+}, 60 * 1000); // 1 minuto
 
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {

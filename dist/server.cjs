@@ -26748,10 +26748,26 @@ app.post("/api/email-campaigns/:id/send", async (req, res) => {
           if (!hasHtmlTags) {
             rawContent = rawContent.replace(/\r\n/g, "<br/>").replace(/\n/g, "<br/>");
           }
-          rawContent = rawContent.replace(/href="(https?:\/\/[^"]+)"/gi, (_match, url) => {
-            const token = makeClickToken(r.id, url);
-            return `href="${baseUrl}/t/${token}"`;
-          });
+          rawContent = rawContent.replace(
+            /<a\b([^>]*?)\bhref=(["'])(https?:\/\/[^"'\s>]+)\2([^>]*)>/gi,
+            (fullMatch, before, _q, url, after) => {
+              if (url.includes("/u/") || url.includes("/t/") || url.includes("/p/")) return fullMatch;
+              const token = makeClickToken(r.id, url);
+              return `<a${before}href="${baseUrl}/t/${token}"${after}>`;
+            }
+          );
+          rawContent = rawContent.replace(
+            /(<a\b[^>]*>[\s\S]*?<\/a>)|((?:https?:\/\/)[^\s<"']+)/gi,
+            (match, aTag, plainUrl) => {
+              if (aTag) return aTag;
+              if (plainUrl) {
+                if (plainUrl.includes("/u/") || plainUrl.includes("/t/") || plainUrl.includes("/p/")) return plainUrl;
+                const token = makeClickToken(r.id, plainUrl);
+                return `<a href="${baseUrl}/t/${token}" style="color: #4f46e5; text-decoration: underline;">${plainUrl}</a>`;
+              }
+              return match;
+            }
+          );
           const pixelUrl = `${baseUrl}/p/${encodeURIComponent(r.id)}`;
           const pixelTag = `<img src="${pixelUrl}" width="1" height="1" border="0" alt="" style="height:1px!important;width:1px!important;border:0!important;margin:0!important;padding:0!important;outline:none!important;" />`;
           const unsubUrl = `${baseUrl}/u/${encodeURIComponent(r.id)}`;
@@ -26902,6 +26918,14 @@ var handleUnsubscribe = async (req, res) => {
       if (r) {
         emailAddr = r.email;
         const now = (/* @__PURE__ */ new Date()).toISOString();
+        if (!r.openedAt) {
+          await db.run("UPDATE email_campaign_recipients SET openedAt = ? WHERE id = ?", [now, recipientId]);
+          await db.run("UPDATE email_campaigns SET totalOpened = totalOpened + 1 WHERE id = ?", [r.campaignId]);
+        }
+        if (!r.clickedAt) {
+          await db.run("UPDATE email_campaign_recipients SET clickedAt = ? WHERE id = ?", [now, recipientId]);
+          await db.run("UPDATE email_campaigns SET totalClicked = totalClicked + 1 WHERE id = ?", [r.campaignId]);
+        }
         await db.run("UPDATE leads SET unsubscribed = 1, updatedAt = ? WHERE id = ?", [now, r.leadId]);
         await db.run("UPDATE leads SET unsubscribed = 1, updatedAt = ? WHERE LOWER(email) = LOWER(?)", [now, r.email]);
         const lead = await db.get("SELECT * FROM leads WHERE id = ?", [r.leadId]);
@@ -27084,7 +27108,7 @@ async function runImapCheck(account) {
         console.log(`[IMAP check] Casella INBOX per "${account.name}" vuota (0 messaggi).`);
         return { repliesFound: 0, inboxMatches: 0 };
       }
-      const sinceDate = account.lastChecked ? new Date(account.lastChecked) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
+      const sinceDate = account.lastChecked ? new Date(new Date(account.lastChecked).getTime() - 10 * 60 * 1e3) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
       const messages = [];
       const fetchRange = `1:${existsCount}`;
       for await (const msg of client.fetch(fetchRange, {
@@ -27189,6 +27213,26 @@ ${bodyText.slice(0, 1500)}` + (msgId ? `
         );
         console.log(`[INBOX SCANNER] Email da "${senderEmail}" abbinata al lead "${matchedLead.name}"`);
         inboxMatches++;
+        try {
+          const pendingRecipient = await db.get(
+            `SELECT * FROM email_campaign_recipients 
+             WHERE leadId = ? AND (repliedAt IS NULL OR repliedAt = '')
+             ORDER BY sentAt DESC LIMIT 1`,
+            [matchedLead.id]
+          );
+          if (pendingRecipient) {
+            if (!pendingRecipient.openedAt) {
+              await db.run("UPDATE email_campaign_recipients SET openedAt = ? WHERE id = ?", [now, pendingRecipient.id]);
+              await db.run("UPDATE email_campaigns SET totalOpened = totalOpened + 1 WHERE id = ?", [pendingRecipient.campaignId]);
+            }
+            await db.run("UPDATE email_campaign_recipients SET repliedAt = ?, replyText = ? WHERE id = ?", [now, bodyText.slice(0, 500), pendingRecipient.id]);
+            await db.run("UPDATE email_campaigns SET totalReplied = totalReplied + 1 WHERE id = ?", [pendingRecipient.campaignId]);
+            repliesFound++;
+            console.log(`[IMAP PART 2] Risposta campagna registrata per lead ${matchedLead.id} (${matchedLead.name})`);
+          }
+        } catch (campErr) {
+          console.error("[IMAP PART 2 Campagna update err]", campErr);
+        }
       }
     } finally {
       try {
@@ -27209,10 +27253,28 @@ ${bodyText.slice(0, 1500)}` + (msgId ? `
   console.log(`[IMAP CHECK] "${account.name}": ${repliesFound} risposte campagna, ${inboxMatches} email inbox abbinate`);
   return { repliesFound, inboxMatches };
 }
+app.post("/api/email-campaigns/check-replies", async (req, res) => {
+  try {
+    const accounts = await db.all("SELECT * FROM imap_accounts", []);
+    if (accounts.length === 0) {
+      return res.status(400).json({ error: "Nessun account IMAP configurato" });
+    }
+    let totalReplies = 0;
+    let totalInbox = 0;
+    for (const acc of accounts) {
+      const { repliesFound, inboxMatches } = await runImapCheck(acc);
+      totalReplies += repliesFound;
+      totalInbox += inboxMatches;
+    }
+    res.json({ ok: true, repliesFound: totalReplies, inboxMatches: totalInbox });
+  } catch (err) {
+    console.error("[/api/email-campaigns/check-replies error]", err);
+    res.status(500).json({ error: err?.message || "Errore IMAP" });
+  }
+});
 setInterval(async () => {
   const accounts = await db.all("SELECT * FROM imap_accounts", []);
   if (accounts.length === 0) return;
-  console.log(`[IMAP POLL] Controllo ${accounts.length} account IMAP...`);
   for (const acc of accounts) {
     try {
       const { repliesFound, inboxMatches } = await runImapCheck(acc);
@@ -27222,7 +27284,7 @@ setInterval(async () => {
       console.error(`[IMAP POLL] Errore account ${acc.name}:`, e);
     }
   }
-}, 10 * 60 * 1e3);
+}, 60 * 1e3);
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     try {
