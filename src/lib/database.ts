@@ -410,15 +410,17 @@ export async function initDb() {
   }
 
   // ── Migrations ─────────────────────────────────────────────────────────────
-  await addCol('colleagues', 'avgRating',    'DOUBLE DEFAULT 0');
-  await addCol('colleagues', 'reviewCount',  'INT DEFAULT 0');
-  await addCol('colleagues', 'username',     "TEXT DEFAULT ''");
-  await addCol('colleagues', 'passwordHash', "TEXT DEFAULT ''");
-  await addCol('colleagues', 'googleTokens', "TEXT DEFAULT ''");
-  await addCol('colleagues', 'role',         "TEXT DEFAULT 'telefonista'");
-  await addCol('colleagues', 'phone',        "TEXT DEFAULT ''");
-  await addCol('colleagues', 'email',        "TEXT DEFAULT ''");
-  await addCol('colleagues', 'pin',          "TEXT DEFAULT ''");
+  await addCol('colleagues', 'avgRating',          'DOUBLE DEFAULT 0');
+  await addCol('colleagues', 'reviewCount',         'INT DEFAULT 0');
+  await addCol('colleagues', 'username',            "TEXT DEFAULT ''");
+  await addCol('colleagues', 'passwordHash',        "TEXT DEFAULT ''");
+  await addCol('colleagues', 'passwordPlain',       "TEXT DEFAULT ''");
+  await addCol('colleagues', 'passwordCustomized',  "INT DEFAULT 0");
+  await addCol('colleagues', 'googleTokens',        "TEXT DEFAULT ''");
+  await addCol('colleagues', 'role',                "TEXT DEFAULT 'telefonista'");
+  await addCol('colleagues', 'phone',               "TEXT DEFAULT ''");
+  await addCol('colleagues', 'email',               "TEXT DEFAULT ''");
+  await addCol('colleagues', 'pin',                 "TEXT DEFAULT ''");
 
   await addCol('history', 'attachmentName', "TEXT DEFAULT ''");
   await addCol('history', 'attachmentUrl',  "TEXT DEFAULT ''");
@@ -538,12 +540,14 @@ export async function initDb() {
     let pwdHash = c.passwordHash || '';
     if (!pwdHash.trim() || !pwdHash.startsWith('scrypt$')) {
       pwdHash = defaultHash;
+      // NON impostare passwordCustomized=1 per le password di default
+      await db.run('UPDATE colleagues SET email = ?, passwordHash = ?, role = ? WHERE id = ?', [email, pwdHash, c.role || 'telefonista', c.id]);
+    } else {
+      await db.run('UPDATE colleagues SET email = ?, role = ? WHERE id = ?', [email, c.role || 'telefonista', c.id]);
     }
-    let role = c.role || 'telefonista';
     if (c.id === 'erika') {
-      role = 'admin';
+      await db.run("UPDATE colleagues SET role = 'admin' WHERE id = 'erika'");
     }
-    await db.run('UPDATE colleagues SET email = ?, passwordHash = ?, role = ? WHERE id = ?', [email, pwdHash, role, c.id]);
   }
 }
 

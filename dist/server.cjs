@@ -24703,6 +24703,8 @@ async function initDb() {
   await addCol("colleagues", "reviewCount", "INT DEFAULT 0");
   await addCol("colleagues", "username", "TEXT DEFAULT ''");
   await addCol("colleagues", "passwordHash", "TEXT DEFAULT ''");
+  await addCol("colleagues", "passwordPlain", "TEXT DEFAULT ''");
+  await addCol("colleagues", "passwordCustomized", "INT DEFAULT 0");
   await addCol("colleagues", "googleTokens", "TEXT DEFAULT ''");
   await addCol("colleagues", "role", "TEXT DEFAULT 'telefonista'");
   await addCol("colleagues", "phone", "TEXT DEFAULT ''");
@@ -24807,12 +24809,13 @@ async function initDb() {
     let pwdHash = c.passwordHash || "";
     if (!pwdHash.trim() || !pwdHash.startsWith("scrypt$")) {
       pwdHash = defaultHash;
+      await db.run("UPDATE colleagues SET email = ?, passwordHash = ?, role = ? WHERE id = ?", [email, pwdHash, c.role || "telefonista", c.id]);
+    } else {
+      await db.run("UPDATE colleagues SET email = ?, role = ? WHERE id = ?", [email, c.role || "telefonista", c.id]);
     }
-    let role = c.role || "telefonista";
     if (c.id === "erika") {
-      role = "admin";
+      await db.run("UPDATE colleagues SET role = 'admin' WHERE id = 'erika'");
     }
-    await db.run("UPDATE colleagues SET email = ?, passwordHash = ?, role = ? WHERE id = ?", [email, pwdHash, role, c.id]);
   }
 }
 function parseJsonField(val) {
@@ -25347,7 +25350,10 @@ app.get("/api/colleagues", async (req, res) => {
       ...safe,
       services: parseJsonField(r.services),
       visibleColleagues: parseJsonField(r.visibleColleagues),
-      passwordSet: Boolean(passwordHash),
+      // passwordSet=true solo se l'admin ha impostato manualmente una password (non la default)
+      passwordSet: Boolean(r.passwordCustomized),
+      // passwordPlain è visibile agli admin nell'interfaccia di gestione credenziali
+      passwordPlain: r.passwordPlain || "",
       googleCalendarConnected: Boolean(googleTokens)
     };
   }));
@@ -25420,7 +25426,8 @@ app.put("/api/colleagues/:id", async (req, res) => {
     ...safeUpdated,
     services: parseJsonField(updated.services),
     visibleColleagues: parseJsonField(updated.visibleColleagues),
-    passwordSet: Boolean(passwordHash),
+    passwordSet: Boolean(updated.passwordCustomized),
+    passwordPlain: updated.passwordPlain || "",
     googleCalendarConnected: Boolean(googleTokens)
   });
 });
@@ -25853,7 +25860,9 @@ app.post("/api/auth/login", async (req, res) => {
     return res.json({ ok: false, error: "Account o email non trovati" });
   }
   let isValid = false;
-  if (colleague.passwordHash && colleague.passwordHash.startsWith("scrypt$")) {
+  if (colleague.passwordPlain && cleanPass === colleague.passwordPlain) {
+    isValid = true;
+  } else if (colleague.passwordHash && colleague.passwordHash.startsWith("scrypt$")) {
     isValid = verifyPassword(cleanPass, colleague.passwordHash);
   }
   if (!isValid && cleanPass === "SolarBrand2026!") {
@@ -25886,12 +25895,13 @@ app.post("/api/auth/logout", async (req, res) => {
 app.post("/api/auth/set-password", async (req, res) => {
   if (!await requireAdmin(req, res)) return;
   const { id, password } = req.body;
-  if (!password || String(password).length < 6) {
+  if (!password || String(password).trim().length < 6) {
     return res.status(400).json({ error: "La password deve avere almeno 6 caratteri" });
   }
-  await db.run("UPDATE colleagues SET passwordHash = ? WHERE id = ?", [hashPassword(String(password)), id]);
+  const cleanPass = String(password).trim();
+  await db.run("UPDATE colleagues SET passwordHash = ?, passwordPlain = ?, passwordCustomized = 1 WHERE id = ?", [hashPassword(cleanPass), cleanPass, id]);
   await db.run("DELETE FROM sessions WHERE colleagueId = ?", [id]);
-  res.json({ ok: true });
+  res.json({ ok: true, passwordPlain: cleanPass });
 });
 app.post("/api/auth/check-password", async (req, res) => {
   const { password, level } = req.body;

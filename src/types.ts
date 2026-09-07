@@ -66,6 +66,8 @@ export interface Colleague {
   role?: 'telefonista' | 'venditore' | 'admin';
   username?: string;
   passwordSet?: boolean;
+  passwordPlain?: string;
+  passwordCustomized?: boolean | number;
   googleCalendarConnected?: boolean;
   services?: string[];
   visibleColleagues?: string[];

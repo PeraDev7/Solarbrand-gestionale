@@ -33,6 +33,7 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
   const [showPassword, setShowPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState<Record<string, boolean>>({});
   const [roleSuccessId, setRoleSuccessId] = useState<string | null>(null);
 
   // Modifica nome operatore
@@ -629,7 +630,7 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
                         col.passwordSet ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-50 text-slate-500 border border-slate-200'
                       }`}>
                         {col.passwordSet && <Check className="w-3 h-3" />}
-                        {col.passwordSet ? 'Password impostata' : 'Password non impostata'}
+                        {col.passwordSet ? 'Password personalizzata' : 'Password non impostata (default)'}
                       </span>
                       {col.role === 'venditore' && col.googleCalendarConnected && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 bg-indigo-50 text-indigo-700 border border-indigo-200">
@@ -729,9 +730,43 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
 
                       {/* Password row */}
                       <div className="space-y-2 border-t border-slate-200 pt-3">
-                        <div className="flex flex-wrap items-center gap-2">
+                        {/* Mostra Password Attuale */}
+                        <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-slate-500 font-bold text-[11px] uppercase flex items-center gap-1">
+                              <KeyRound className="w-3.5 h-3.5 text-slate-400" /> Password attuale:
+                            </span>
+                            {col.passwordPlain ? (
+                              <span className="font-mono font-black text-slate-800 tracking-wider bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200 text-xs">
+                                {showCurrentPassword[col.id] ? col.passwordPlain : '••••••••••••'}
+                              </span>
+                            ) : col.passwordSet ? (
+                              <span className="text-emerald-700 font-bold text-[11px]">
+                                Personalizzata (impostata in precedenza, reimpostala qui sotto per vederla in chiaro)
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-medium text-[11px] italic">
+                                Non ancora personalizzata (predefinita di sistema: <strong className="text-slate-700 font-mono not-italic">SolarBrand2026!</strong>)
+                              </span>
+                            )}
+                          </div>
+                          {col.passwordPlain && (
+                            <button
+                              type="button"
+                              onClick={() => setShowCurrentPassword(prev => ({ ...prev, [col.id]: !prev[col.id] }))}
+                              className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer flex items-center gap-1 text-[11px] font-semibold"
+                              title={showCurrentPassword[col.id] ? "Nascondi password" : "Mostra password in chiaro"}
+                            >
+                              {showCurrentPassword[col.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                              <span>{showCurrentPassword[col.id] ? 'Nascondi' : 'Mostra'}</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Modifica Nuova Password */}
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
                           <span className="text-[11px] font-bold text-slate-500 uppercase w-24 flex items-center gap-1">
-                            <KeyRound className="w-3.5 h-3.5" /> Password
+                            <KeyRound className="w-3.5 h-3.5" /> Nuova Pwd
                           </span>
                           <div className="flex-1 min-w-[180px] relative">
                             <input

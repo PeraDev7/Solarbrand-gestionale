@@ -14,9 +14,10 @@ interface Props {
   colleagues?: string[];
   colleagueObjects?: Colleague[];
   activeColleague?: string;
+  isAdmin?: boolean;
 }
 
-export default function ImportLeadsModal({ onClose, services, leads, colleagues = [], colleagueObjects = [], activeColleague = '' }: Props) {
+export default function ImportLeadsModal({ onClose, services, leads, colleagues = [], colleagueObjects = [], activeColleague = '', isAdmin = true }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('file');
 
   return (
@@ -30,8 +31,15 @@ export default function ImportLeadsModal({ onClose, services, leads, colleagues 
               <FileSpreadsheet className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-extrabold text-slate-900">Importa Lead Multi-Canale</h2>
-              <p className="text-xs text-slate-500 font-medium">Carica liste da Excel/CSV oppure estrai contatti da Google Maps (Apify)</p>
+              <h2 className="text-xl font-extrabold text-slate-900">
+                {isAdmin ? 'Importa Lead Multi-Canale' : 'Importa Lead da File'}
+              </h2>
+              <p className="text-xs text-slate-500 font-medium">
+                {isAdmin 
+                  ? 'Carica liste da Excel/CSV oppure estrai contatti da Google Maps (Apify)'
+                  : 'Carica e assegna liste di contatti da file Excel (.xlsx, .xls) o CSV'
+                }
+              </p>
             </div>
           </div>
           <button 
@@ -42,30 +50,32 @@ export default function ImportLeadsModal({ onClose, services, leads, colleagues 
           </button>
         </div>
 
-        {/* Tabs Header */}
-        <div className="grid grid-cols-2 border-b border-slate-200 bg-slate-50/80">
-          {[
-            { key: 'file' as Tab, labelFull: '1. File Excel / CSV', labelShort: '1. Excel / CSV', icon: FileSpreadsheet },
-            { key: 'apify' as Tab, labelFull: '2. Google Maps Scraper (Apify)', labelShort: '2. Google Maps', icon: MapPin },
-          ].map(({ key, labelFull, labelShort, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              className={`flex items-center justify-center gap-2 px-4 py-3.5 text-xs font-black border-b-2 transition-all cursor-pointer text-center ${
-                activeTab === key ? 'border-indigo-600 text-indigo-600 bg-white shadow-xs' : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              <span className="hidden sm:inline">{labelFull}</span>
-              <span className="sm:hidden text-[11px]">{labelShort}</span>
-            </button>
-          ))}
-        </div>
+        {/* Tabs Header - solo se Admin */}
+        {isAdmin && (
+          <div className="grid grid-cols-2 border-b border-slate-200 bg-slate-50/80">
+            {[
+              { key: 'file' as Tab, labelFull: '1. File Excel / CSV', labelShort: '1. Excel / CSV', icon: FileSpreadsheet },
+              { key: 'apify' as Tab, labelFull: '2. Google Maps Scraper (Apify)', labelShort: '2. Google Maps', icon: MapPin },
+            ].map(({ key, labelFull, labelShort, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className={`flex items-center justify-center gap-2 px-4 py-3.5 text-xs font-black border-b-2 transition-all cursor-pointer text-center ${
+                  activeTab === key ? 'border-indigo-600 text-indigo-600 bg-white shadow-xs' : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Icon className="w-4 h-4 flex-shrink-0" />
+                <span className="hidden sm:inline">{labelFull}</span>
+                <span className="sm:hidden text-[11px]">{labelShort}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          {activeTab === 'file' && <FileImportTab leads={leads} services={services} colleagues={colleagues} colleagueObjects={colleagueObjects} activeColleague={activeColleague} onClose={onClose} />}
-          {activeTab === 'apify' && <ApifyGoogleMapsTab services={services} colleagues={colleagues} colleagueObjects={colleagueObjects} onClose={onClose} />}
+          {(!isAdmin || activeTab === 'file') && <FileImportTab leads={leads} services={services} colleagues={colleagues} colleagueObjects={colleagueObjects} activeColleague={activeColleague} onClose={onClose} />}
+          {isAdmin && activeTab === 'apify' && <ApifyGoogleMapsTab services={services} colleagues={colleagues} colleagueObjects={colleagueObjects} onClose={onClose} />}
         </div>
       </div>
     </div>

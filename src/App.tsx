@@ -380,7 +380,7 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
             </button>
           </div>
 
-          {currentTab === 'leads' && session.role === 'admin' && (
+          {currentTab === 'leads' && (isAdmin || session.role === 'telefonista' || isTelefonistaNonAdmin) && (
             <div className="grid grid-cols-2 md:flex items-center gap-2">
               <button
                 onClick={() => setShowImportModal(true)}
@@ -981,6 +981,7 @@ function OfficeApp({ session, onLogout }: { session: Session; onLogout: () => vo
           colleagues={colleagues}
           colleagueObjects={colleagueObjects}
           activeColleague={activeColleague}
+          isAdmin={isAdmin}
           onClose={() => {
             setShowImportModal(false);
             refreshLeads();
