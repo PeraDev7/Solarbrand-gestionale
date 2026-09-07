@@ -708,6 +708,9 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
                             type="email"
                             placeholder="email@solarbrand.it"
                             value={emailDraft}
+                            autoComplete="off"
+                            data-lpignore="true"
+                            data-1p-ignore="true"
                             onChange={e => { setEmailDraft(e.target.value); setEmailError(''); setEmailSuccess(''); }}
                             className="flex-1 min-w-[180px] bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
                           />
@@ -736,31 +739,26 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
                             <span className="text-slate-500 font-bold text-[11px] uppercase flex items-center gap-1">
                               <KeyRound className="w-3.5 h-3.5 text-slate-400" /> Password attuale:
                             </span>
-                            {col.passwordPlain ? (
-                              <span className="font-mono font-black text-slate-800 tracking-wider bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200 text-xs">
-                                {showCurrentPassword[col.id] ? col.passwordPlain : '••••••••••••'}
-                              </span>
-                            ) : col.passwordSet ? (
-                              <span className="text-emerald-700 font-bold text-[11px]">
-                                Personalizzata e attiva (impostata in precedenza: l'utente accede regolarmente con la sua password personale)
-                              </span>
-                            ) : (
-                              <span className="text-slate-400 font-medium text-[11px] italic">
-                                Predefinita di sistema: <strong className="text-slate-700 font-mono not-italic">SolarBrand2026!</strong>
+                            <span className="font-mono font-black text-slate-800 tracking-wider bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200 text-xs">
+                              {showCurrentPassword[col.id] 
+                                ? (col.passwordPlain || 'SolarBrand2026!') 
+                                : '••••••••••••'}
+                            </span>
+                            {!col.passwordSet && (
+                              <span className="text-[10px] text-slate-400 italic">
+                                (predefinita)
                               </span>
                             )}
                           </div>
-                          {col.passwordPlain && (
-                            <button
-                              type="button"
-                              onClick={() => setShowCurrentPassword(prev => ({ ...prev, [col.id]: !prev[col.id] }))}
-                              className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer flex items-center gap-1 text-[11px] font-semibold"
-                              title={showCurrentPassword[col.id] ? "Nascondi password" : "Mostra password in chiaro"}
-                            >
-                              {showCurrentPassword[col.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                              <span>{showCurrentPassword[col.id] ? 'Nascondi' : 'Mostra'}</span>
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => setShowCurrentPassword(prev => ({ ...prev, [col.id]: !prev[col.id] }))}
+                            className="text-slate-500 hover:text-slate-700 p-1 cursor-pointer flex items-center gap-1 text-[11px] font-semibold"
+                            title={showCurrentPassword[col.id] ? "Nascondi password" : "Mostra password in chiaro"}
+                          >
+                            {showCurrentPassword[col.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            <span>{showCurrentPassword[col.id] ? 'Nascondi' : 'Mostra in chiaro'}</span>
+                          </button>
                         </div>
 
                         {/* Modifica Nuova Password */}
@@ -773,6 +771,11 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
                               type={showPassword ? 'text' : 'password'}
                               placeholder="Nuova password (min 6 caratteri)"
                               value={newPassword}
+                              autoComplete="new-password"
+                              data-lpignore="true"
+                              data-1p-ignore="true"
+                              data-form-type="other"
+                              name={`pwd_input_${col.id}`}
                               onChange={e => { setNewPassword(e.target.value); setPasswordError(''); }}
                               className="w-full bg-white border border-slate-200 rounded-xl px-3 pr-9 py-2 text-xs"
                             />

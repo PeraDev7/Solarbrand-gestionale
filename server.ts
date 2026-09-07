@@ -431,11 +431,27 @@ app.get('/api/colleagues', async (req, res) => {
   res.json(rows.map(r => {
     const { pin, passwordHash, googleTokens, ...safe } = r;
     const isErika = r.id === 'erika' || (r.email && r.email.toLowerCase() === 'eroikaphoto@gmail.com');
-    const isCustomized = Boolean(r.passwordCustomized) || isErika || (Boolean(passwordHash) && passwordHash !== hashPassword('SolarBrand2026!'));
+    
     let plain = r.passwordPlain || '';
     if (!plain && isErika) {
       plain = 'Eroika0987';
     }
+
+    let isDefault = false;
+    if (passwordHash && passwordHash.startsWith('scrypt$')) {
+      try {
+        isDefault = verifyPassword('SolarBrand2026!', passwordHash);
+      } catch (e) {
+        isDefault = false;
+      }
+    }
+
+    if (!plain && isDefault) {
+      plain = 'SolarBrand2026!';
+    }
+
+    const isCustomized = Boolean(r.passwordCustomized) || isErika || (!isDefault && Boolean(passwordHash));
+
     return {
       ...safe,
       services: parseJsonField(r.services),
@@ -527,11 +543,27 @@ app.put('/api/colleagues/:id', async (req, res) => {
   const updated = await db.get('SELECT * FROM colleagues WHERE id = ?', [id]) as any;
   const { pin, passwordHash, googleTokens, ...safeUpdated } = updated;
   const isErika = updated.id === 'erika' || (updated.email && updated.email.toLowerCase() === 'eroikaphoto@gmail.com');
-  const isCustomized = Boolean(updated.passwordCustomized) || isErika || (Boolean(passwordHash) && passwordHash !== hashPassword('SolarBrand2026!'));
+  
   let plain = updated.passwordPlain || '';
   if (!plain && isErika) {
     plain = 'Eroika0987';
   }
+
+  let isDefault = false;
+  if (passwordHash && passwordHash.startsWith('scrypt$')) {
+    try {
+      isDefault = verifyPassword('SolarBrand2026!', passwordHash);
+    } catch (e) {
+      isDefault = false;
+    }
+  }
+
+  if (!plain && isDefault) {
+    plain = 'SolarBrand2026!';
+  }
+
+  const isCustomized = Boolean(updated.passwordCustomized) || isErika || (!isDefault && Boolean(passwordHash));
+
   res.json({
     ...safeUpdated,
     services: parseJsonField(updated.services),
