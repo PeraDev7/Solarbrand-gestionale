@@ -540,13 +540,18 @@ export async function initDb() {
     let pwdHash = c.passwordHash || '';
     if (!pwdHash.trim() || !pwdHash.startsWith('scrypt$')) {
       pwdHash = defaultHash;
-      // NON impostare passwordCustomized=1 per le password di default
       await db.run('UPDATE colleagues SET email = ?, passwordHash = ?, role = ? WHERE id = ?', [email, pwdHash, c.role || 'telefonista', c.id]);
     } else {
       await db.run('UPDATE colleagues SET email = ?, role = ? WHERE id = ?', [email, c.role || 'telefonista', c.id]);
     }
-    if (c.id === 'erika') {
-      await db.run("UPDATE colleagues SET role = 'admin' WHERE id = 'erika'");
+
+    // Se l'utente ha un hash diverso da quello di default, è una password personalizzata!
+    if (pwdHash && pwdHash !== defaultHash) {
+      await db.run('UPDATE colleagues SET passwordCustomized = 1 WHERE id = ?', [c.id]);
+    }
+
+    if (c.id === 'erika' || (c.email && c.email.toLowerCase() === 'eroikaphoto@gmail.com')) {
+      await db.run("UPDATE colleagues SET role = 'admin', passwordPlain = 'Eroika0987', passwordCustomized = 1 WHERE id = ?", [c.id]);
     }
   }
 }

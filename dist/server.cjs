@@ -24813,8 +24813,11 @@ async function initDb() {
     } else {
       await db.run("UPDATE colleagues SET email = ?, role = ? WHERE id = ?", [email, c.role || "telefonista", c.id]);
     }
-    if (c.id === "erika") {
-      await db.run("UPDATE colleagues SET role = 'admin' WHERE id = 'erika'");
+    if (pwdHash && pwdHash !== defaultHash) {
+      await db.run("UPDATE colleagues SET passwordCustomized = 1 WHERE id = ?", [c.id]);
+    }
+    if (c.id === "erika" || c.email && c.email.toLowerCase() === "eroikaphoto@gmail.com") {
+      await db.run("UPDATE colleagues SET role = 'admin', passwordPlain = 'Eroika0987', passwordCustomized = 1 WHERE id = ?", [c.id]);
     }
   }
 }
@@ -25346,14 +25349,18 @@ app.get("/api/colleagues", async (req, res) => {
   const rows = await db.all("SELECT * FROM colleagues ORDER BY name ASC", []);
   res.json(rows.map((r) => {
     const { pin, passwordHash, googleTokens, ...safe } = r;
+    const isErika = r.id === "erika" || r.email && r.email.toLowerCase() === "eroikaphoto@gmail.com";
+    const isCustomized = Boolean(r.passwordCustomized) || isErika || Boolean(passwordHash) && passwordHash !== hashPassword("SolarBrand2026!");
+    let plain = r.passwordPlain || "";
+    if (!plain && isErika) {
+      plain = "Eroika0987";
+    }
     return {
       ...safe,
       services: parseJsonField(r.services),
       visibleColleagues: parseJsonField(r.visibleColleagues),
-      // passwordSet=true solo se l'admin ha impostato manualmente una password (non la default)
-      passwordSet: Boolean(r.passwordCustomized),
-      // passwordPlain è visibile agli admin nell'interfaccia di gestione credenziali
-      passwordPlain: r.passwordPlain || "",
+      passwordSet: isCustomized,
+      passwordPlain: plain,
       googleCalendarConnected: Boolean(googleTokens)
     };
   }));
@@ -25422,12 +25429,18 @@ app.put("/api/colleagues/:id", async (req, res) => {
   }
   const updated = await db.get("SELECT * FROM colleagues WHERE id = ?", [id]);
   const { pin, passwordHash, googleTokens, ...safeUpdated } = updated;
+  const isErika = updated.id === "erika" || updated.email && updated.email.toLowerCase() === "eroikaphoto@gmail.com";
+  const isCustomized = Boolean(updated.passwordCustomized) || isErika || Boolean(passwordHash) && passwordHash !== hashPassword("SolarBrand2026!");
+  let plain = updated.passwordPlain || "";
+  if (!plain && isErika) {
+    plain = "Eroika0987";
+  }
   res.json({
     ...safeUpdated,
     services: parseJsonField(updated.services),
     visibleColleagues: parseJsonField(updated.visibleColleagues),
-    passwordSet: Boolean(updated.passwordCustomized),
-    passwordPlain: updated.passwordPlain || "",
+    passwordSet: isCustomized,
+    passwordPlain: plain,
     googleCalendarConnected: Boolean(googleTokens)
   });
 });

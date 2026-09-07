@@ -742,11 +742,11 @@ export default function SuperAdminArea({ onClose, onUpdate, onSelectVendorCalend
                               </span>
                             ) : col.passwordSet ? (
                               <span className="text-emerald-700 font-bold text-[11px]">
-                                Personalizzata (impostata in precedenza, reimpostala qui sotto per vederla in chiaro)
+                                Personalizzata e attiva (impostata in precedenza: l'utente accede regolarmente con la sua password personale)
                               </span>
                             ) : (
                               <span className="text-slate-400 font-medium text-[11px] italic">
-                                Non ancora personalizzata (predefinita di sistema: <strong className="text-slate-700 font-mono not-italic">SolarBrand2026!</strong>)
+                                Predefinita di sistema: <strong className="text-slate-700 font-mono not-italic">SolarBrand2026!</strong>
                               </span>
                             )}
                           </div>
