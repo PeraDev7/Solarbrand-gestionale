@@ -3,7 +3,7 @@
 > 🟢 **STATO SISTEMA: ONLINE E ATTIVO SU HOSTINGER**  
 > **URL PUBBLICO**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **REPOSITORY GITHUB (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **VERSIONE ATTUALE**: 4.14 — Paginazione lista Gestione Lead (10/20/50/100 righe) e Scheda Lead Viewport-Locked (fissa a schermo con scroll interno indipendente)
+> **VERSIONE ATTUALE**: 4.15 — Filtro dedicato Sopralluoghi & In Loco nella tab Report (export Excel e PDF dedicati, preservando l'export completo delle attività)
 
 ---
 

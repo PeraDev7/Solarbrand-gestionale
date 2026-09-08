@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 4.14 (Paginazione lista Gestione Lead con selettore 10/20/50/100 righe e Scheda Lead Viewport-Locked con scroll interno indipendente)  
+> **Versione**: 4.15 (Filtro dedicato Sopralluoghi & In Loco nella tab Report con export Excel e PDF dedicati, preservando l'export completo delle attività)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
@@ -231,6 +231,21 @@ Dal pannello **"Gestione Team, Tipologie & Ruoli Aziendali"** (riservato agli am
 2. **Rinomina Tipologie Inline**:
    - Accanto al badge di ciascuna tipologia è presente l'icona Matita per modificare il nome al volo.
    - Il server propaga la modifica su tutti i lead (`leads.service` e array `leads.services`) e sui servizi assegnati ai collaboratori (`colleagues.services`).
+
+### 2.14 Filtro Dedicato Sopralluoghi & In Loco nei Report (v4.15)
+Nella tab dei **Report & Esportazione Attività** (`ReportsView.tsx`), è stato implementato un selettore di ambito a due modalità:
+1. **Modalità "Tutte le Attività" (Standard Predefinita)**:
+   - Preserva al 100% l'esportazione classica con tutte le attività storiche (chiamate telefoniche, email, note, cambi di stato, appuntamenti).
+2. **Modalità "Solo Sopralluoghi & In Loco" (Nuova)**:
+   - Isola e visualizza esclusivamente gli **appuntamenti di sopralluogo** (in loco) e i **sopralluoghi effettuati dagli agenti commerciali**, incrociando i dati di `appointments`, `visit_reports` e `leads`.
+   - **Sotto-filtri rapidi**: visualizzazione rapida tra *Tutti*, *Solo Sopralluoghi Fatti (Effettuati)* e *Solo Appuntamenti Fissati (In programma)*.
+   - **Integrazione con tutti i filtri esistenti**:
+     - Filtro per Agente Commerciale (venditore assegnato o che ha eseguito la visita);
+     - Filtro per Telefonista / Operatore Ufficio (chi ha fissato l'appuntamento);
+     - Filtro per Tipologia di impianto / servizio trattato;
+     - Filtro per intervallo temporale (Da Data / A Data).
+   - **Esportazione Excel Arricchita**: colonne dedicate con *Data/Ora, Tipo Evento, Lead, Indirizzo, Telefono, Tipologia, Agente Commerciale, Telefonista, Stato/Esito, kWp Impianto, Pompa di Calore, Valore Contratto (€), Note e Prossima Azione*.
+   - **Esportazione PDF Professionale**: layout elegante con KPI specifici, tabelle di riepilogo per agente commerciale e per telefonista, e tabella dettagliata degli interventi in loco.
 
 ---
 
