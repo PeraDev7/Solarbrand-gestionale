@@ -1403,7 +1403,7 @@ app.post('/api/leads/apify-search', async (req, res) => {
     }
 
     const locationQuery = buildLocationQuery(locations, cities);
-    const targetCount = Math.max(1, Math.min(Number(fetch_count) || 20, 200));
+    const targetCount = Math.max(1, Math.min(Number(fetch_count) || 20, 10000));
     // Su Google Maps circa il 25-35% delle attività possiede email e telefono estratti dal sito.
     // Per garantire l'esatto numero target richiesto, scansioniamo 3.5x - 4x schede iniziali.
     const initialBatchSize = Math.max(25, Math.ceil((targetCount * 3.5) / searchStrings.length));
@@ -1505,7 +1505,7 @@ app.get('/api/leads/apify-search/status', async (req, res) => {
     // Multi-round check: se non abbiamo ancora raggiunto il target esatto di lead qualificati (email + tel), lanciamo un round aggiuntivo
     if (
       job.collectedLeads.length < job.targetCount &&
-      job.roundsDone < 3
+      job.roundsDone < 5
     ) {
       const remaining = job.targetCount - job.collectedLeads.length;
       const newBatchSize = Math.max(Math.ceil(job.currentBatchSize * 1.5), Math.ceil((remaining * 4) / job.searchStrings.length));

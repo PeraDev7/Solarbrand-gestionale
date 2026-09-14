@@ -611,7 +611,7 @@ function ApifyGoogleMapsTab({ services = [], colleagues = [], colleagueObjects =
   const [industries, setIndustries] = useState('');
   const [location, setLocation] = useState('');
   const [keywords, setKeywords] = useState('');
-  const [limit, setLimit] = useState('10');
+  const [limit, setLimit] = useState('50');
 
   const venditori = colleagueObjects && colleagueObjects.length > 0
     ? colleagueObjects.filter(c => c.role === 'venditore')
@@ -710,7 +710,7 @@ function ApifyGoogleMapsTab({ services = [], colleagues = [], colleagueObjects =
         industries: industries.trim(),
         locations: location.trim(),
         keywords: keywords.trim(),
-        fetch_count: Number(limit) || 10,
+        fetch_count: Math.max(1, parseInt(limit, 10) || 50),
         assignedColleague: assignedColleague || undefined,
         assignedTelefonista: assignedTelefonista || undefined,
         service: service || undefined,
@@ -877,18 +877,34 @@ function ApifyGoogleMapsTab({ services = [], colleagues = [], colleagueObjects =
 
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1">Lead Richiesti (Email + Tel)</label>
-            <select
+            <input
+              type="number"
+              min="1"
+              step="5"
               value={limit}
               onChange={e => setLimit(e.target.value)}
+              placeholder="es. 100, 250, 500"
               disabled={loading}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-            >
-              <option value="10">10 Lead Verificati</option>
-              <option value="25">25 Lead Verificati</option>
-              <option value="50">50 Lead Verificati</option>
-              <option value="100">100 Lead Verificati</option>
-            </select>
-            <p className="text-[10px] text-slate-400 mt-1">Numero target di contatti completi da importare.</p>
+              className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {[25, 50, 100, 250, 500, 1000].map(n => (
+                <button
+                  key={n}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => setLimit(String(n))}
+                  className={`text-[10px] px-2 py-0.5 rounded-lg font-semibold transition-all cursor-pointer ${
+                    limit === String(n)
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1">Nessun limite: inserisci liberamente qualsiasi quantità desiderata.</p>
           </div>
         </div>
 

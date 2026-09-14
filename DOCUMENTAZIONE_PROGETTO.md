@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 4.15 (Filtro dedicato Sopralluoghi & In Loco nella tab Report con export Excel e PDF dedicati, preservando l'export completo delle attività)  
+> **Versione**: 4.16 (Lead Generation Google Maps Apify: rimozione tetto a 100 lead, campo numerico custom libero con preset rapidi fino a 1000+, innalzamento limite backend a 10.000 e fino a 5 round di scansione)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
@@ -246,6 +246,16 @@ Nella tab dei **Report & Esportazione Attività** (`ReportsView.tsx`), è stato 
      - Filtro per intervallo temporale (Da Data / A Data).
    - **Esportazione Excel Arricchita**: colonne dedicate con *Data/Ora, Tipo Evento, Lead, Indirizzo, Telefono, Tipologia, Agente Commerciale, Telefonista, Stato/Esito, kWp Impianto, Pompa di Calore, Valore Contratto (€), Note e Prossima Azione*.
    - **Esportazione PDF Professionale**: layout elegante con KPI specifici, tabelle di riepilogo per agente commerciale e per telefonista, e tabella dettagliata degli interventi in loco.
+
+### 2.15 Lead Generation Google Maps Apify: Quantità Custom Libera & Rimozione Vincolo 100 Lead (v4.16)
+Nella tab di importazione **Google Maps Scraper (Apify)** (`ImportLeadsModal.tsx`):
+1. **Rimozione del Vincolo Dropdown (10, 25, 50, 100)**:
+   - Sostituito il vecchio menu a tendina rigido con un campo di input numerico libero dove l'operatore può indicare **qualsiasi quantità target di contatti completi desiderata** (es. 150, 300, 500, 1.000 lead completi con Email e Telefono).
+2. **Pulsanti di Selezione Rapida (Preset 1-Click)**:
+   - Posizionati sotto all'input comodi badge cliccabili `[25] [50] [100] [250] [500] [1000]` per impostare istantaneamente il valore con un tocco o digitare qualsiasi cifra a mano.
+3. **Potenziamento Backend (`server.ts`) & Multi-Round**:
+   - Innalzato il tetto massimo di sicurezza da 200 a 10.000 lead in `POST /api/leads/apify-search`.
+   - Esteso l'algoritmo di autocompletamento multi-round fino a 5 cicli progressivi per garantire il raggiungimento dell'esatto numero target richiesto anche su volumi importanti di contatti arricchiti con Email e Telefono validati.
 
 ---
 

@@ -3,7 +3,7 @@
 > **Stato del Progetto**: 🟢 **ONLINE E ATTIVO IN PRODUZIONE SU HOSTINGER**  
 > **URL Produzione**: [https://crm.solarbrandkg.it/](https://crm.solarbrandkg.it/)  
 > **Repository GitHub (CI/CD)**: [https://github.com/PeraDev7/Solarbrand-gestionale](https://github.com/PeraDev7/Solarbrand-gestionale) (branch `main`)  
-> **Versione**: 3.8 (Robustezza IMAP Hostinger + Anti-Autofill Globale + Scraper Maps Arricchito + Tracking Email)  
+> **Versione**: 4.16 (Lead Generation Google Maps Apify: rimozione tetto a 100 lead, campo numerico custom libero con preset rapidi fino a 1000+, innalzamento limite backend a 10.000 e fino a 5 round di scansione)  
 > **Architettura**: Vite + React 19 + TypeScript + Express + MariaDB / MySQL 8 (`mysql2/promise`) / SQLite locale (`better-sqlite3`)
 
 ---
@@ -12,28 +12,27 @@
 
 **Solarbrand Flow** è un software gestionale web studiato specificamente per le aziende che vendono e installano **impianti fotovoltaici, pompe di calore e Comunità Energetiche (CER)**. 
 
-L'applicazione supporta il flusso operativo aziendale completo con due portali distinti:
+L'applicazione supporta il flusso operativo aziendale completo con tre livelli di profilo:
 
-### 1.1 Portale Ufficio / Call Center (es. Erika, Laura, Luciana)
-- **Qualifica e Chiamate**: Presenta i prodotti al telefono e qualifica i contatti. Tutti i telefonisti possono vedere l'intero database lead per lavorare liberamente le liste di chiamata.
-- **Assegnazione Diretta Lead & Filtri Agente**:
-  - Menu a tendina filtri nella tab *Gestione Lead* per filtrare per Telefonista assegnato, Agente commerciale, oppure *⚠️ Non Assegnati*.
-  - Riassegnazione immediata 1-click direttamente dall'intestazione della scheda lead.
-  - Assegnazione automatica predefinita durante l'importazione da file Excel/CSV.
-- **Campagne Email Marketing & Tracking Completo**:
-  - Creazione ed invio massivo email tramite account SMTP aziendale (`info@solarbrandkg.it`).
-  - **Pixel Tracking 1x1 Invisibile**: traccia l'esatto momento dell'apertura email.
-  - **Click Tracking con Redirect 302**: riscrive i link nelle email e traccia l'interazione del lead.
-  - **Inbox Scanner & Monitoraggio Risposte IMAP**: intercetta sia le risposte alle campagne sia le email spontanee inviate dai clienti registrati.
-- **Assegnazione Sopralluoghi & Richiami**: Fissa due tipologie distinte di appuntamento:
-  - 📞 **Richiamo Telefonico Ufficio**: per ricontattare internamente il lead via telefono.
-  - 🏠 **Sopralluogo Fisico Agente**: affida l'appuntamento sul campo ad uno specifico agente commerciale (es. *Marco Rossi*, *Stefano Bianchi*, ecc.).
-- **Gestione Template Email & SMS di Sistema**: Gestisce i template email e SMS aziendali, inclusi i 2 template automatici di sistema (*Ringraziamento Post-Sopralluogo* e *Richiesta Recensione Stelline*).
-- **Monitoraggio Esiti, Preventivi & Stelline Agenti**: Vede nello storico del cliente i report dei venditori, i preventivi allegati (WhatsApp, Cartaceo, Email) e la media valutazioni a stelline ricevuta dagli agenti.
-- **Esportazione Report Attività (Excel & PDF Professionale)**: Genera report avanzati per presentazioni aziendali.
+### 1.1 Portale Super Admin (es. Erika — `eroikaphoto@gmail.com`)
+- **Gestione Completa Database Lead**: Creazione manuale nuovi lead, importazione massiva da Excel/CSV, riassegnazione a telefonisti e agenti commerciali. Cancellazione sicura a cascata (rimuove istantaneamente appuntamenti, schede visita, task, storico e allegati associati al lead).
+- **Tipologie Trattate dall'Azienda (ex Servizi)**: Configurazione e gestione delle tipologie di intervento (es. *Fotovoltaico Residenziale*, *Agricolo*, *Edile*, *Pompa di Calore*, *Comunità Energetica*).
+- **Gestione Team & Collaboratori**: Creazione account, assegnazione ruoli (`admin`, `telefonista`, `venditore`), assegnazione tipologie gestite e **reset password istantaneo 1-click** (senza fastidiosi prompt o doppi controlli password).
+- **Monitoraggio Recensioni e Valutazioni Clienti**: Tab dedicata *"Recensioni"* per consultare i voti a 5 stelle, i commenti lasciati dai clienti e le medie aggregate per ciascun venditore.
+- **Campagne Email Marketing & Tracking**: Creazione ed invio di campagne email massive tramite account SMTP aziendale (`info@solarbrandkg.it`), monitoraggio aperture pixel 1x1, click 302 e risposte automatiche via IMAP.
+- **Template Email & SMS Aziendali**: Creazione, modifica e gestione dei modelli di testo per comunicazioni rapide e automatiche.
+- **Configurazioni Server**: Gestione account SMTP e caselle IMAP con Inbox Scanner.
 
-### 1.2 Portale Agenti Commerciali / Venditori (es. Marco Rossi, Stefano Bianchi, Alessandro Neri, ecc.)
-- **Vista Appuntamenti Personali & Rating**: Vedono esclusivamente la lista sopralluoghi ed i lead affidati a loro, con il badge **Media Stelline (valutazione clienti)** in evidenza.
+### 1.2 Portale Ufficio / Call Center (Telefonisti — es. Laura, Luciana)
+- **Visualizzazione Filtrata**: Visualizzano esclusivamente i lead assegnati direttamente a loro (`assignedTelefonisti`) **oppure** i lead con una delle **Tipologie** loro assegnate.
+- **Qualifica e Chiamate**: Lavorano i lead, aggiornano lo stato, aggiungono note di chiamata e fissano appuntamenti.
+- **Invio Email da Scheda Lead**: Possono inviare email singole direttamente dalla scheda del cliente, selezionando tra i template predefiniti creati dall'admin.
+- **Assegnazione Riservata Solo ad Agenti Commerciali**: Possono assegnare il lead o il sopralluogo esclusivamente ad un **Agente Commerciale (venditore)**. Non possono assegnare né modificare i telefonisti assegnati al lead (privilegio riservato esclusivamente agli amministratori sia da interfaccia che da backend).
+- **Isolamento Calendario Appuntamenti**: Nel Calendario Appuntamenti visualizzano **esclusivamente i propri appuntamenti fissati**. Non possono vedere gli appuntamenti degli altri telefonisti (filtraggio blindato lato frontend e forzato a livello server API `/api/appointments`), con badge fisso "I Miei Appuntamenti".
+- **Restrizioni di Sicurezza**: NON possono importare file Excel/CSV, NON possono creare/modificare template, NON inviano SMS e NON hanno accesso a campagne o impostazioni server.
+
+### 1.3 Portale Agenti Commerciali / Venditori (es. Marco Rossi, Stefano Bianchi, Alessandro Neri, Fabio Test, ecc.)
+- **Vista Appuntamenti Personali & Rating**: Vedono esclusivamente la lista sopralluoghi ed i lead affidati a loro, con il badge **Media Stelline (valutazione clienti)** in evidenza. Gli appuntamenti di lead cancellati vengono rimossi automaticamente in tempo reale.
 - **Sincronizzazione Google Calendar Personale (OAuth 2.0)**:
   - Ciascun agente commerciale collega autonomamente il proprio account Google personale/aziendale cliccando su *"Collega Google Calendar"*.
   - Quando l'ufficio fissa o riassegna un appuntamento all'agente, l'evento viene creato o aggiornato istantaneamente sul calendario Google del venditore assegnato.
@@ -45,27 +44,223 @@ L'applicazione supporta il flusso operativo aziendale completo con due portali d
 
 ---
 
-## 2. Funzionalità Avanzate & Aggiornamenti Recenti (v3.8)
+## 2. Funzionalità Avanzate & Aggiornamenti Recenti (v4.3)
 
-### 2.1 Connettore IMAP Universale & Risoluzione `Command failed`
+### 2.1 Sistema Stelline & Recensioni Agenti (Verificato Live End-to-End)
+- **Flusso Automatico su Chiusura Contratto**:
+  - Quando un lead viene impostato sullo stato **`Chiuso con successo`** (e ha un indirizzo email), il backend genera in modo trasparente un record univoco con token crittografico nella tabella `reviews`.
+  - **Persistenza Dati Cliente**: Nome ed email del cliente vengono archiviati direttamente nella riga della recensione (`leadName`, `leadEmail`). **Se il lead viene in seguito cancellato dal CRM, la recensione RESTA intatta** con il nome e l'email del cliente leggibili, senza mai mostrare codici ID o perdere le valutazioni.
+  - Viene spedita in tempo reale una mail tramite SMTP usando il template `review_request` contenente il link personalizzato `https://crm.solarbrandkg.it/recensione?token=UUID`.
+- **Interfaccia Web Recensioni Pubblica (`/recensione?token=...`)**:
+  - Interfaccia dedicata, mobile-first, con sistema di valutazione a 5 stelle grafiche (hover e selezione animati con rating: *Scarso*, *Sufficiente*, *Buono*, *Molto Buono*, *Eccellente!*).
+  - Box commento facoltativo per feedback qualitativo.
+  - **Protezione Anti-Abuso Monouso**: Una volta completata la valutazione, il token viene marcato con data/ora (`usedAt`) e successivi accessi mostrano una pagina di ringraziamento, impedendo voti multipli.
+- **Ricalcolo Automatico Medie Venditori**:
+  - Al click di invio (`POST /api/reviews/submit`), il server esegue la media ponderata `AVG(rating)` e il conteggio `COUNT(*)` per l'agente commerciale assegnato e aggiorna istantaneamente i campi `avgRating` e `reviewCount` nella tabella `colleagues`.
+  - La media aggiornata compare subito nel badge stelline del portale agente e in tutta la piattaforma.
+- **Nuovo Tab "Recensioni" nell'Area Super Admin (`SuperAdminArea.tsx`) per TUTTI gli Admin**:
+  - Accessibile a **qualsiasi utente con ruolo `admin`** (Erika, Fabio Slemer o qualsiasi amministratore futuro), non ristretto a un singolo account.
+  - Navigazione a schede (`Team & Tipologie` / `Recensioni [N]`).
+  - Scorecard grafiche in testata con media decimale, stelline dorate e totale recensioni per ciascun venditore.
+  - Elenco analitico di tutte le recensioni con cliente, email, agente assegnato, voto, commento esteso, data di invio e data di compilazione (oppure badge *"In attesa di risposta"*).
+  - **Eliminazione Singola Recensione con Cestino**: Ciascun admin può eliminare una recensione specifica (con ricalcolo automatico immediato delle medie dell'agente).
+  - **Pulsante "Azzera Recensioni Test"**: Per ripulire in blocco tutte le recensioni di prova e resettare le statistiche a zero.
+- **Nuovi Endpoint API Protetti**:
+  - `GET /api/admin/reviews`: lista completa delle recensioni con fallback e join.
+  - `DELETE /api/admin/reviews/:id`: cancellazione singola recensione con ricalcolo statistiche agente.
+  - `DELETE /api/admin/reviews`: svuotamento totale recensioni e reset medie agenti.
+  - Metodi client dedicati `api.getAdminReviews()`, `api.deleteAdminReview(id)` e `api.clearAllReviews()` in `src/lib/api.ts`.
+
+### 2.2 Cancellazione a Cascata & Pulizia Automatica Record Orfani
+- **Problema individuato**: Quando l'amministratore cancellava un lead dalla tabella `leads`, gli appuntamenti precedentemente fissati per quel cliente rimanevano orfani nella tabella `appointments` (e nelle schede visita / task), continuando ad apparire nella dashboard dell'agente assegnato.
+- **Soluzione applicata**:
+  - **DELETE a cascata in `server.ts`**: All'eliminazione di un lead, vengono automaticamente rimossi tutti i record collegati (`appointments`, `visit_reports`, `tasks`, `history`, `lead_attachments`, `email_campaign_recipients`), **mantenendo invece le recensioni e le valutazioni dei clienti** per preservare la reputazione storica degli agenti.
+  - **Funzione `cleanupOrphanRecords()` all'avvio**: All'avvio del server viene eseguita una query di bonifica che elimina retroattivamente tutti i record orfani già presenti nel database.
+  - **JOIN filtrata negli endpoint**: `GET /api/appointments` e `GET /api/visit-reports` utilizzano `INNER JOIN leads` per garantire al 100% che nessun appuntamento orfano possa mai essere inviato agli agenti.
+
+### 2.3 Reset Password Istantaneo Admin (Senza Doppio Check)
+- Quando un amministratore imposta una password per un collega in `SuperAdminArea.tsx`, l'operazione è istantanea con 1 solo click.
+- Viene inviata la password desiderata direttamente ad un endpoint sicuro che la hasha e la salva, senza richiedere conferme ripetute.
+- La password appena salvata viene mostrata a video all'amministratore con un pulsante rapido per copiarla o renderla visibile con l'icona dell'occhio.
+
+### 2.4 Selezione Intere Tipologie per Campagne Email & Assegnazione Automatica all'Importazione (v4.4)
+- **Selezione Rapida Intere Tipologie nelle Campagne Marketing (`EmailCampaignManager.tsx`)**:
+  - Superata la selezione manuale riga per riga: caricamento dinamico di tutte le tipologie aziendali (`/api/services`).
+  - **Pill/Badge Interattivi a 1-Click**: Ciascuna tipologia dispone di un pulsante rapido che mostra il numero esatto di lead con email disponibili per quel servizio (es. *Fotovoltaico Residenziale (24)*, *Comunità Energetica (11)*). Con un solo click è possibile selezionare o deselezionare in blocco tutti i destinatari appartenenti a quell'intera tipologia (`lead.services?.includes(tip) || lead.service === tip`).
+  - **Filtro Tipologia Avanzato**: Menu a tendina dedicato per filtrare la tabella contatti per tipologia specifica, combinabile con la barra di ricerca testuale per nome/azienda/email.
+  - **Azioni Cumulative Rapide**: Pulsanti per `+ Aggiungi filtrati (N)`, `- Togli filtrati` e `Azzera` selezione.
+  - **Badge Grafico Tipologia**: Ogni scheda lead nella lista destinatari mostra un badge visivo colorato indicante le tipologie di interesse del cliente.
+- **Assegnazione Automatica Multi-Ruolo & Tipologia all'Importazione Lead (`ImportLeadsModal.tsx`)**:
+  - **Importazione Excel / CSV (`FileImportTab`)**:
+    - Sezione predefinita con 3 selettori dedicati per le righe prive di colonne specifiche:
+      1. 💼 **Agente Commerciale (Venditore)**
+      2. 📞 **Telefonista (Ufficio / Call Center)**
+      3. 🏷️ **Tipologia Trattata**
+    - Mappatura automatica intelligente delle colonne file per `assignedColleague`, `assignedTelefonista` e `service`.
+    - Anteprima in tempo reale che riflette istantaneamente i valori predefiniti scelti nei selettori.
+    - Aggiornamento backend `/api/leads/import` con inserimento e aggiornamento completo dei campi `assignedColleague`, `assignedTelefonisti` (JSON array) e `services` (JSON array).
+  - **Google Maps Scraper Apify (`ApifyGoogleMapsTab`)**:
+    - Aggiunto box di configurazione con gli stessi 3 selettori (Agente Commerciale, Telefonista Ufficio, Tipologia Trattata) prima dell'avvio della ricerca su Maps.
+    - Invio a `/api/leads/apify-search` e memorizzazione nei job asincroni Apify.
+    - All'estrazione dei contatti arricchiti con telefono ed email da Maps, il server applica e registra direttamente i valori scelti su ciascun nuovo lead generato nel database.
+
+### 2.5 Rinomina Globale "Servizi" ➔ "Tipologie"
+- **Terminologia Allineata al Business**: Sostituita la dicitura *Servizi* con *Tipologie* (es. agricolo, edile, industriale, residenziale).
+- **Adeguamento UI Completo**:
+  - Dropdown toolbar: `Tipologia (Tutte)`.
+  - Intestazione colonna tabella lead: `Tipologia`.
+  - Modale lead (`LeadModal.tsx`): `Tipologie di Interesse`.
+  - Gestione collaboratori (`SuperAdminArea.tsx`): `Tipologie Trattate dall'Azienda`.
+  - Report e PDF (`ReportsView.tsx`): filtri e tabelle con intestazione `Tipologie`.
+
+### 2.5 Restrizioni di Ruolo & Sicurezza Operatori Call Center
+- **Pulsanti Amministrativi Riservati**:
+  - Solo gli utenti con ruolo Super Admin possono visualizzare i pulsanti: *Template Email*, *Template SMS*, *Server SMTP*, *Server IMAP*, *Campagne Email Massive*, *Importa Lead* e *Nuovo Lead*.
+- **Scheda Lead**: Rimosso il pulsante/tendina SMS per i profili con ruolo `telefonista`. Mantenuto il modulo invio email con selezione dei template aziendali.
+
+### 2.6 Doppia Assegnazione Lead (Telefonisti Multipli + Agente Singolo)
+- **Nuovo campo DB `assignedTelefonisti` (JSON Array)**: Memorizza l'elenco dei telefonisti assegnati. `assignedColleague` mantiene l'agente commerciale venditore.
+- **Migrazione Automatica Idempotente (`migrateAssignments()`)**: All'avvio del server, i lead esistenti che avevano un telefonista in `assignedColleague` sono stati migrati automaticamente nel nuovo array JSON, preservando i venditori.
+- **Interfaccia `LeadModal.tsx` Rinnovata**:
+  - Sezione Telefonisti (viola) con toggle-button multi-selezione.
+  - Sezione Agente Commerciale (ambra) con selettore singolo dedicato.
+- **Filtri Separati & Badge Colorati**: Due dropdown indipendenti nella toolbar di ricerca e badge distintivi 📞 e 💼 nella vista tabella e nella scheda dettaglio.
+
+### 2.2 Risoluzione Bug Critico Credenziali Erika & Aggiornamento Login Admin
+- **Causa del problema**: Nel backfill iniziale di `database.ts`, a ogni riavvio del server veniva forzato `email = 'erika@solarbrand.it'`, sovrascrivendo qualsiasi modifica manuale effettuata dall'amministratore.
+- **Fix Implementato**: Rimosso il ripristino forzato. Il server preserva rigorosamente email e password personalizzate.
+- **Nuove Credenziali di Produzione**:
+  - **Email**: `eroikaphoto@gmail.com`
+  - **Password**: `Eroika0987`
+  - **Test Live**: Verificato con esito positivo direttamente su `https://crm.solarbrandkg.it/api/auth/login`.
+
+### 2.3 Connettore IMAP Universale & Risoluzione `Command failed`
 - **Scansione Compatibile con Hostinger**: Sostituito l'uso di `client.search({ since })` con UID con `client.fetch('1:*')` filtrato per data in JavaScript. Questo garantisce compatibilità al 100% con qualsiasi server IMAP (inclusi Hostinger, cPanel e Gmail).
 - **Inbox Scanner Automatico**: Cattura sia le risposte alle campagne (`In-Reply-To`) sia le email spontanee inviate dai clienti censiti, allegandole allo storico del lead con protezione anti-duplicati (`[MSGID:...]` nascosto da UI).
 
-### 2.2 Protezione Globale Anti-Autofill del Browser
+### 2.4 Protezione Globale Anti-Autofill del Browser
 - **Barra di Ricerca Lead**: Aggiunto `autoComplete="off"` e identificatore univoco `name="lead-search-query"` per impedire al browser di iniettare credenziali di login (es. `erika@solarbrand.it`) nel campo di ricerca.
 - **Campo Token Apify**: Protetto con `autoComplete="off"` per evitare che i gestori password sovrascrivano il token API con le password salvate del CRM.
 
-### 2.3 Lead Generation Google Maps (Apify Scraper) & Precisione Territoriale
+### 2.5 Lead Generation Google Maps (Apify Scraper) & Precisione Territoriale
 - **Token API Organizzazione**: Integrazione diretta con Organization API Token (`Iride Suite Organization`).
 - **Verifica Territoriale Reale**: Lo scraper estrae indirizzo completo, CAP e prefisso telefonico (es. `045` per Verona centro/lago e `0442` per Legnago/Bassa Veronese).
-- **Arricchimento Contatti e Anti-Duplicati**: Navigazione automatizzata dei siti web aziendali per estrarre sia email che telefono verificati, con scarto automatico dei contatti già presenti in rubrica.
+- **Arricchimento Contatti e Anti-Duplicati**: Navigazione automatizzata dei siti web aziendali per estrarre sia email che telefono validati.
 
-### 2.4 Uniformità Visiva Badge di Stato
-- **Confronto Case-Insensitive**: Il rendering dei badge di stato (es. *Nuovo*, *Chiamato*, *Interessato*) gestisce in modo trasparente variazioni di maiuscole/minuscole nel database (`nuovo` / `Nuovo`).
+### 2.6 Gestione Duplicati Intelligente in Importazione Apify Google Maps (v4.6)
+- Aggiunta la modalità di gestione duplicati (`skip`, `use_existing`, `create_new`) anche nella tab Apify, speculare all'importazione file Excel/CSV.
+- Il backend analizza sia l'indirizzo email che il numero di telefono (normalizzato senza spazi e con prefisso internazionale uniforme) rispetto ai lead già archiviati.
+- Feedback visivo con contatori statistici (*Nuovi Importati*, *Aggiornati*, *Duplicati Saltati*) e accordion con il dettaglio nominativo riga per riga.
+
+### 2.7 Restrizioni Scheda Lead per Agenti Commerciali (v4.6 - v4.7)
+- **Eliminazione Lead Inibita**: Rimosso il pulsante cestino in alto a destra nella scheda e blocco 403 Forbidden su `DELETE /api/leads/:id` se il richiedente è un venditore.
+- **Invio SMS Disabilitato**: Rimosso il pulsante rapido SMS per gli agenti.
+- **Tab Email Nascosta**: Gli agenti non vedono la tab per inviare email promozionali/comunicazioni standard (riservata ad admin e telefonisti).
+- **Attività in Storico**: Niente opzione "Chiamata"; gli agenti possono inserire solo "Nota".
+- **Fissa Appuntamento con Auto-Assegnazione**: L'agente può fissare sopralluoghi, ma il sistema lo assegna in automatico esclusivamente a se stesso.
+- **Sincronizzazione Automatica Google Calendar**: L'evento viene creato all'istante anche sul calendario Google personale dell'agente se collegato.
+- **Visibilità Appuntamenti per Telefonisti**: I telefonisti vedono nel proprio calendario gli appuntamenti creati sugli stessi lead assegnati a loro.
+
+### 2.8 Visibilità Completa e Diretta di Telefono ed Email in Schede e Calendari (v4.7)
+- **Scheda Dettaglio Lead (`LeadDetail`)**: Posizionati subito sotto al nome del contatto due elementi in evidenza:
+  - 📞 **Telefono** in chiaro con link cliccabile `tel:` per avviare subito la chiamata.
+  - ✉️ **Email** in chiaro con link cliccabile `mailto:` per avviare il client di posta predefinito.
+- **Dashboard Agenti (`VendorApp`)**: Sia nelle card appuntamenti che nei lead associati sono sempre visibili e cliccabili numero di telefono ed email.
+- **Calendario Appuntamenti (`AppointmentsList`)**: In ogni card appuntamento sono riportati direttamente sia il telefono che l'email del cliente con badge dedicati.
+
+### 2.9 Isolamento Template Email Automatici "One-Time" (v4.8)
+- I due template di sistema automatici (*Ringraziamento Post-Sopralluogo* e *Richiesta Recensione Consulente* con token) rimangono modificabili solo nel pannello *Template Email* di amministrazione.
+- **Esclusione dalla selezione manuale**: I due template sono stati filtrati ed esclusi sia dal menu a tendina della **scheda lead singola (`SendEmailForm`)** che dal creatore di **campagne massive (`EmailCampaignManager`)**.
+- In questo modo non possono essere inviati per errore manualmente o duplicati, mantenendo il loro scopo esclusivo di automazioni di sistema one-time per singolo lead/evento.
+
+### 2.10 Gestione Completa Allegati Email (Nei Template Fissi e Al Volo da Scheda Lead) (v4.9)
+- **Allegati Fissi nei Template (`EmailTemplateManager`)**:
+  - Aggiunta colonna `attachments LONGTEXT DEFAULT NULL` nella tabella `email_templates`.
+  - Nella creazione o modifica di un template email l'amministratore può caricare documenti e PDF (es. brochure aziendale, schede tecniche di prodotto, listini).
+  - Badge visivo nelle card template con conteggio file fissi allegati.
+- **Invio Email da Scheda Lead (`SendEmailForm`)**:
+  - Selezionando un template che possiede allegati fissi, i file vengono precaricati istantaneamente nella lista allegati dell'email.
+  - **Caricamento al volo**: Pulsante *"Allega File"* per caricare sul momento documenti da disco.
+  - **Pesca da Documenti Lead**: Pulsante *"Da Documenti Lead"* che apre un modal per scegliere e allegare con un click i file già salvati nella tab Allegati della scheda lead.
+  - Gli allegati vengono convertiti in base64 e inviati tramite `nodemailer` con tracking del nome file nella nota di storico (`history`).
+
+### 2.11 ErrorBoundary Globale + Fix Crash da Google Translate / Estensioni Chrome (v4.10 - v4.10.1)
+
+#### Problema Rilevato — Schermata Bianca su Chrome (Erika, Surface Notebook)
+- **Sintomo**: L'utente Erika (admin) su Microsoft Surface Notebook con Google Chrome vedeva la pagina diventare completamente bianca subito dopo aver assegnato o modificato un lead. Su altri PC e in modalità incognito il problema non si presentava.
+- **Diagnosi**: Aggiunto un **React Error Boundary globale** (`src/components/ErrorBoundary.tsx`) che intercetta qualunque eccezione non gestita nell'albero React e la mostra all'utente invece dello schermo bianco, con messaggio di errore, stack trace e componenti coinvolti.
+- **Errore Catturato** (visibile grazie all'ErrorBoundary):
+  ```
+  NotFoundError: Failed to execute 'insertBefore' on 'Node':
+  The node before which the new node is to be inserted is not a child of this node.
+  ```
+- **Causa Radice**: L'errore **NON era un bug nel codice applicativo**, ma un conflitto tra React e una **estensione Chrome** (Google Translate o similare) installata sul browser di Erika. Le estensioni di traduzione modificano direttamente il DOM HTML, andando in conflitto con il reconciler di React che non trova più i nodi dove deve inserire elementi. In modalità incognito le estensioni sono disabilitate, per questo il problema non si presentava.
+
+#### Soluzione Applicata
+1. **`src/components/ErrorBoundary.tsx`** (nuovo): Componente React class-based che avvolge tutta l'app. In caso di crash mostra messaggio d'errore, stack trace, componente coinvolto e pulsanti per ricaricare o riprovare.
+2. **`src/main.tsx`**: `<App />` avvolto con `<ErrorBoundary>` come wrapper globale.
+3. **`index.html`**: Aggiunto `translate="no"` e `lang="it"` al tag `<html>` — impedisce a Google Translate e simili di modificare il DOM dell'applicazione, prevenendo il conflitto alla radice.
+
+> **💡 Lezione Appresa**: Se un'app React crasha solo su un browser/PC specifico, sospettare sempre le **estensioni del browser** (Google Translate, Grammarly, LastPass, uBlock Origin). Il sintomo tipico è `insertBefore` / `removeChild` su `Node`. La fix è `translate="no"` sull'`<html>`.
+
+### 2.12 Ottimizzazione Anti-Spam & Cattura Azioni Lead Pulita (v4.11)
+Per evitare che i filtri antispam (Gmail, Outlook, Yahoo) classifichino le email inviate dal gestionale come spam/phishing mantenendo contemporaneamente al 100% il tracciamento delle azioni dei lead (apertura email, click sui link e risposte):
+1. **Endpoint di Tracking Puliti**:
+   - Apertura email: `/p/:eid` invece del sospetto `/api/email-track/open?eid=...` (GIF trasparente 1x1 con header anti-cache).
+   - Click sui link: `/t/:token` invece del redirect esplicito `/api/email-track/click?url=...` (il token base64url crittografato include recipientId e destinazione, senza rivelare parametri query sospetti).
+   - Mantenimento retrocompatibilità automatica con i vecchi endpoint per email già consegnate.
+2. **Generazione Automatica Alternativa `text/plain`**:
+   - Converte il codice HTML in testo formattato puro via `htmlToText()`, inviando email multipart (fondamentale per reputazione mittente e compatibilità).
+3. **Display Name Mittente Corretto**:
+   - Formattazione standard `"Nome" <email@dominio.it>` (es. `"SolarBrand KG" <info@solarbrandkg.it>`) anziché raw email string.
+4. **Header `List-Unsubscribe` Conforme**:
+   - Header `mailto:` integrato nativamente su ogni invio campagna, allineandosi ai requisiti per mittenti di massa Gmail/Yahoo 2024.
+5. **Rimozione Header Personalizzati Sospetti**:
+   - Eliminati header `X-Campaign-Id` e `X-Recipient-Id` che fungevano da signature di invio di massa non autenticato.
+
+### 2.13 Modifica Nome Operatori e Tipologie da Gestione Team (v4.12)
+Dal pannello **"Gestione Team, Tipologie & Ruoli Aziendali"** (riservato agli amministratori):
+1. **Rinomina Operatori Inline (Pencil Icon)**:
+   - Accanto al nome di ogni operatore è presente il pulsante Matita che trasforma il titolo in campo input con tasti di salvataggio rapido (`Enter` o spunta verde) e annullamento (`Esc` o croce rossa).
+   - **Propagazione Automatica a Cascata nel Database**:
+     - `leads.assignedColleague`: aggiornato se assegnato come commerciale principale;
+     - `leads.assignedTelefonisti`: aggiornato all'interno dell'array JSON senza corrompere gli altri operatori assegnati;
+     - `appointments.colleague` e `appointments.assignedVendor`: aggiornati per preservare lo storico appuntamenti e il calendario;
+     - `visit_reports.vendorName`: aggiornato per mantenere intatte le schede sopralluogo compilate;
+     - `history.colleague`: aggiornato in tutte le note ed eventi storici del CRM.
+2. **Rinomina Tipologie Inline**:
+   - Accanto al badge di ciascuna tipologia è presente l'icona Matita per modificare il nome al volo.
+   - Il server propaga la modifica su tutti i lead (`leads.service` e array `leads.services`) e sui servizi assegnati ai collaboratori (`colleagues.services`).
+
+### 2.14 Filtro Dedicato Sopralluoghi & In Loco nei Report (v4.15)
+Nella tab dei **Report & Esportazione Attività** (`ReportsView.tsx`), è stato implementato un selettore di ambito a due modalità:
+1. **Modalità "Tutte le Attività" (Standard Predefinita)**:
+   - Preserva al 100% l'esportazione classica con tutte le attività storiche (chiamate telefoniche, email, note, cambi di stato, appuntamenti).
+2. **Modalità "Solo Sopralluoghi & In Loco" (Nuova)**:
+   - Isola e visualizza esclusivamente gli **appuntamenti di sopralluogo** (in loco) e i **sopralluoghi effettuati dagli agenti commerciali**, incrociando i dati di `appointments`, `visit_reports` e `leads`.
+   - **Sotto-filtri rapidi**: visualizzazione rapida tra *Tutti*, *Solo Sopralluoghi Fatti (Effettuati)* e *Solo Appuntamenti Fissati (In programma)*.
+   - **Integrazione con tutti i filtri esistenti**:
+     - Filtro per Agente Commerciale (venditore assegnato o che ha eseguito la visita);
+     - Filtro per Telefonista / Operatore Ufficio (chi ha fissato l'appuntamento);
+     - Filtro per Tipologia di impianto / servizio trattato;
+     - Filtro per intervallo temporale (Da Data / A Data).
+   - **Esportazione Excel Arricchita**: colonne dedicate con *Data/Ora, Tipo Evento, Lead, Indirizzo, Telefono, Tipologia, Agente Commerciale, Telefonista, Stato/Esito, kWp Impianto, Pompa di Calore, Valore Contratto (€), Note e Prossima Azione*.
+   - **Esportazione PDF Professionale**: layout elegante con KPI specifici, tabelle di riepilogo per agente commerciale e per telefonista, e tabella dettagliata degli interventi in loco.
+
+### 2.15 Lead Generation Google Maps Apify: Quantità Custom Libera & Rimozione Vincolo 100 Lead (v4.16)
+Nella tab di importazione **Google Maps Scraper (Apify)** (`ImportLeadsModal.tsx`):
+1. **Rimozione del Vincolo Dropdown (10, 25, 50, 100)**:
+   - Sostituito il vecchio menu a tendina rigido con un campo di input numerico libero dove l'operatore può indicare **qualsiasi quantità target di contatti completi desiderata** (es. 150, 300, 500, 1.000 lead completi con Email e Telefono).
+2. **Pulsanti di Selezione Rapida (Preset 1-Click)**:
+   - Posizionati sotto all'input comodi badge cliccabili `[25] [50] [100] [250] [500] [1000]` per impostare istantaneamente il valore con un tocco o digitare qualsiasi cifra a mano.
+3. **Potenziamento Backend (`server.ts`) & Multi-Round**:
+   - Innalzato il tetto massimo di sicurezza da 200 a 10.000 lead in `POST /api/leads/apify-search`.
+   - Esteso l'algoritmo di autocompletamento multi-round fino a 5 cicli progressivi per garantire il raggiungimento dell'esatto numero target richiesto anche su volumi importanti di contatti arricchiti con Email e Telefono validati.
 
 ---
 
 ## 3. Schema Database (18 Tabelle)
+
 
 1. `leads`: Anagrafica lead/clienti con `address`, `colleagueId`, stato preventivo e note.
 2. `colleagues`: Operatori ed agenti con ruolo (`telefonista` | `venditore` | `admin`), `email`, `passwordHash`, rating stelline e `googleTokens`.
@@ -84,7 +279,29 @@ L'applicazione supporta il flusso operativo aziendale completo con due portali d
 15. `lead_attachments`: Registro dei file caricati e collegati ai singoli lead.
 16. `email_campaigns`: Campagne di email marketing massive con contatori (inviati, aperti, cliccati, risposte).
 17. `email_campaign_recipients`: Destinatari campagne con tracking aperture, click e risposte.
-18. `oauth_states`: Gestione stati temporanei handshake OAuth Google.
+19. `leads.unsubscribed`: Flag GDPR (0/1) che blocca l'invio di future campagne promozionali al contatto.
+
+---
+
+## 3.1 Deliverability Email & Sistema Disiscrizione GDPR (v4.13)
+
+Per garantire che le email non finiscano in spam e rispettare i requisiti internazionali (Google, Yahoo, GDPR):
+
+1. **Separazione Netta tra Invio Singolo Diretto ed Email Marketing**:
+   - **Email Singole da Scheda Lead (`POST /api/send-email`)**: Utilizzate dalle operatrici dopo una chiamata o dai commerciali. **NON hanno intestazioni di marketing, NON hanno header `List-Unsubscribe` e NON hanno link di disiscrizione nel testo**. Vengono percepite dai provider (Gmail, Outlook) come corrispondenza privata diretta persona-a-persona.
+   - **Campagne Email Massive (`POST /api/email-campaigns/:id/send`)**: Includono per legge gli header conformi **RFC 8058 One-Click** (`List-Unsubscribe: <https://crm.solarbrandkg.it/u/:token>`, `List-Unsubscribe-Post: List-Unsubscribe=One-Click`) e il link di disiscrizione nel piè di pagina.
+2. **Endpoint di Disiscrizione Iper-Veloce (`/u/:token`)**:
+   - Supporta richieste GET da browser (interfaccia pulita per l'utente) e richieste POST automatiche dei provider di posta (Google One-Click).
+   - Registra istantaneamente `unsubscribed = 1` sul lead e su tutte le anagrafiche con la stessa email.
+   - Inserisce automaticamente nello storico del lead: `🚫 [DISISCRIZIONE EMAIL] Il contatto ha revocato il consenso e si è disiscritto dalle comunicazioni email.`.
+3. **Blocco Automatico ed Evidenza Visiva**:
+   - Quando si caricano i destinatari in una campagna, i lead disiscritti vengono **esclusi automaticamente** (`skippedUnsubscribed`).
+   - Nella scheda del lead compare il badge rosso in evidenza: `🚫 Disiscritto da Campagne Email`.
+   - Se un'operatrice tenta di mandare una mail manuale, compare un banner di avviso giallo/rosso di cautela legale.
+4. **Migliorie Tecniche Deliverability**:
+   - Punteggio **10/10 su Mail-Tester** con SPF, DKIM, DMARC e Reverse DNS verificati sul server SMTP dedicato (`dms01.vhosting-it.net`).
+   - Generazione automatica multipart `text/plain` via `htmlToText` in tandem con `text/html`.
+   - Tracking aperture pixel trasparente `1x1` e tracking click senza query string sospette (`/p/:eid` e `/t/:token`).
 
 ---
 
