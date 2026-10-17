@@ -1,0 +1,23 @@
+name: Deploy to Hostinger
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Auto Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Hostinger Auto-Deploy Webhook
+        run: |
+          if [ -n "${{ secrets.HOSTINGER_DEPLOY_WEBHOOK }}" ]; then
+            echo "Invio trigger di deploy a Hostinger..."
+            curl -X POST -f "${{ secrets.HOSTINGER_DEPLOY_WEBHOOK }}"
+            echo "Deploy avviato con successo su Hostinger!"
+          else
+            echo "Nessun secret HOSTINGER_DEPLOY_WEBHOOK trovato."
+            echo "Puoi incollare il Webhook di Hostinger direttamente in GitHub -> Settings -> Webhooks"
+          fi
