@@ -9,6 +9,7 @@ import { db, randomUUID, parseJsonField, seedDemoDataIfNeeded, initDb, migrateAs
 import { hashPassword, verifyPassword } from './src/lib/passwords.js';
 import { buildSearchStrings, buildLocationQuery, buildActorInput, startApifyRun, parseGoogleMapsItems } from './src/lib/google-maps-scraper.js';
 import { createJob, getJob, updateJob } from './src/lib/scraper-jobs.js';
+import { setupMcpRoutes } from './src/mcp/server.js';
 
 // ── EMAIL HELPER FUNCTIONS ──
 /** Converte HTML in testo plain per l'alternativa text/plain delle email */
@@ -2761,6 +2762,9 @@ setInterval(async () => {
     }
   }
 }, 60 * 1000); // 1 minuto
+
+// Configura le route del connettore ChatGPT MCP (OAuth, Discovery e Transport)
+setupMcpRoutes(app);
 
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
